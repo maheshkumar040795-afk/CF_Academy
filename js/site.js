@@ -1,5 +1,5 @@
 // CF Academy — public website logic
-import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS } from "./site-config.js";
+import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js";
 import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners } from "./db.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -244,7 +244,7 @@ function renderPrograms() {
     <article class="prog reveal">
       <div class="prog-media${p.image ? " has-img" : ""}">
         ${p.image
-          ? `<img src="${escAttr(p.image)}" alt="${escAttr(p.title)}" loading="lazy" decoding="async" onerror="this.remove()">`
+          ? `<img class="bg" src="${escAttr(p.image)}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()"><img class="fg" src="${escAttr(p.image)}" alt="${escAttr(p.title)}" loading="lazy" decoding="async" onerror="this.parentNode.classList.remove('has-img');this.parentNode.querySelectorAll('img').forEach(function(i){i.remove()})">`
           : ""}
         <div class="ph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${PROG_ICONS[p.icon] || PROG_ICONS.book}</svg></div>
       </div>
@@ -266,6 +266,50 @@ function renderPrograms() {
     $("#book").scrollIntoView({ behavior: "smooth" });
     setTimeout(() => $("#studentName").focus({ preventScroll: true }), 600);
   });
+}
+
+// ── Find a tutor for anything (tabs) ──
+function prefillBooking(it, mode) {
+  if (mode) { const r = $(`input[name="mode"][value="${mode}"]`); if (r) { r.checked = true; syncMode(); } }
+  if (it.cls) $("#studentClass").value = it.cls;
+  if (it.board) $("#board").value = it.board;
+  if (it.subject && SUBJECTS.includes(it.subject)) setChips($("#subjectChips"), [it.subject]);
+  const note = it.note || (!it.cls && !it.subject && !it.board ? it.label : "");
+  if (note) $("#notes").value = "Interested in: " + note;
+  $$(".f.invalid").forEach((f) => f.classList.remove("invalid"));
+  $("#book").scrollIntoView({ behavior: "smooth" });
+  setTimeout(() => $("#studentName").focus({ preventScroll: true }), 600);
+}
+function initExplore() {
+  const tabs = $("#exTabs"), panel = $("#exPanel");
+  if (!tabs) return;
+  let cur = 0;
+  tabs.innerHTML = CATEGORIES.map((c, i) => `<button type="button" class="ex-tab" role="tab" id="ext${i}" aria-controls="exPanel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${escAttr(c.tab)}</button>`).join("");
+  const show = (i) => {
+    cur = i;
+    const cat = CATEGORIES[i];
+    $$(".ex-tab", tabs).forEach((t, k) => { t.setAttribute("aria-selected", String(k === i)); t.tabIndex = k === i ? 0 : -1; });
+    panel.setAttribute("aria-labelledby", "ext" + i);
+    const weights = cat.groups.map((g) => (g.cols === 2 ? "1.6fr" : "1fr")).join(" ");
+    panel.style.gridTemplateColumns = weights;
+    panel.innerHTML = cat.groups.map((g, gi) => `
+      <div class="ex-group">
+        <h3>${escAttr(g.title)}</h3>
+        <ul class="ex-list ${g.cols === 2 ? "c2" : ""}">${g.items.map((it, ii) => `<li><button type="button" data-g="${gi}" data-i="${ii}">${escAttr(it.label)}</button></li>`).join("")}</ul>
+      </div>`).join("");
+  };
+  tabs.addEventListener("click", (e) => { const t = e.target.closest(".ex-tab"); if (t) show([...tabs.children].indexOf(t)); });
+  tabs.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const n = (cur + (e.key === "ArrowRight" ? 1 : -1) + CATEGORIES.length) % CATEGORIES.length;
+    show(n); tabs.children[n].focus();
+  });
+  panel.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-g]"); if (!b) return;
+    const cat = CATEGORIES[cur];
+    prefillBooking(cat.groups[Number(b.dataset.g)].items[Number(b.dataset.i)], cat.mode);
+  });
+  show(0);
 }
 
 // ── Ad banner slider (slides managed in Admin → Website Banners) ──
@@ -326,6 +370,7 @@ function init() {
   applySite();
   initMenu();
   renderPrograms();
+  initExplore();
   initReveal();
 
   $("#subjectList").innerHTML = SUBJECTS.map((s) => `<span>${s}</span>`).join("");

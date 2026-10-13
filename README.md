@@ -59,6 +59,9 @@ Edit `js/site-config.js`: office **address** (currently `[OFFICE ADDRESS]`), Goo
 ### Programme cards (photos)
 The 6 cards under “Our services” are listed in `PROGRAMS` at the bottom of `js/site-config.js`. To add a photo, paste its URL into that card's `image: ""` (any size — the full photo is shown, never cropped). Cards without a photo show a branded icon.
 
+### “Find a tutor for anything” table
+Tabs, groups and items are in `CATEGORIES` at the bottom of `js/site-config.js` (Online Classes, Tuition, Languages, IT Courses, Exam Coaching). Clicking an item pre-fills the booking form. Please confirm the IT courses and exams listed there with the academy.
+
 ### 4. Import the 850 tutors
 Admin → **Tutors → Excel template** → fill (or use the academy's own sheet — common headings like *Tutor Name, Phone No, Location* are recognised) → **Import Excel**. The preview shows new vs updated tutors and any bad rows before saving. Re-importing updates tutors with the same mobile number instead of duplicating.
 

@@ -82,3 +82,71 @@ export const PROGRAMS = [
     
     image: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1791899127/IT_course.jpg", cls: "College / Other", subject: "Computer Science" }
 ];
+
+// "Find a tutor for anything" tabbed table (UrbanPro style, without hobbies).
+// Each item can pre-fill the booking form: cls (class), subject (one of SUBJECTS), mode, or note.
+// TODO (client): confirm the IT courses and exams you actually offer.
+export const CATEGORIES = [
+  { tab: "Online Classes", mode: "Online tuition", groups: [
+    { title: "Tuitions", cols: 2, items: [
+      { label: "Class 12 Tuition", cls: "Class 12" }, { label: "Class 7 Tuition", cls: "Class 7" },
+      { label: "Class 11 Tuition", cls: "Class 11" }, { label: "Class 6 Tuition", cls: "Class 6" },
+      { label: "Class 10 Tuition", cls: "Class 10" }, { label: "Class I-V Tuition", cls: "Class 1" },
+      { label: "Class 9 Tuition", cls: "Class 9" }, { label: "BCom Tuition", cls: "College / Other", subject: "Commerce" },
+      { label: "Class 8 Tuition", cls: "Class 8" }, { label: "BTech Tuition", cls: "College / Other" }] },
+    { title: "Languages", cols: 2, items: [
+      { label: "Spoken English", subject: "English" }, { label: "IELTS", note: "IELTS" },
+      { label: "French Language", note: "French" }, { label: "PTE", note: "PTE" },
+      { label: "Spanish Language", note: "Spanish" }, { label: "TOEFL", note: "TOEFL" },
+      { label: "German Language", note: "German" }, { label: "Tamil Language", subject: "Tamil" },
+      { label: "Hindi Language", subject: "Hindi" }] },
+    { title: "More", cols: 1, items: [
+      { label: "Online Tuitions" }, { label: "Online Language Classes", note: "Language classes" },
+      { label: "Online IT Coaching", cls: "College / Other", subject: "Computer Science" },
+      { label: "Online Exam Entrance Coaching", note: "Entrance exam coaching" }] }
+  ] },
+  { tab: "Tuition", groups: [
+    { title: "School tuition", cols: 2, items: [
+      { label: "Nursery – KG Tuition", cls: "LKG" }, { label: "Class 8 Tuition", cls: "Class 8" },
+      { label: "Class I-V Tuition", cls: "Class 1" }, { label: "Class 9 Tuition", cls: "Class 9" },
+      { label: "Class 6 Tuition", cls: "Class 6" }, { label: "Class 10 Tuition", cls: "Class 10" },
+      { label: "Class 7 Tuition", cls: "Class 7" }, { label: "Class 11 Tuition", cls: "Class 11" },
+      { label: "Class 12 Tuition", cls: "Class 12" }] },
+    { title: "College tuition", cols: 1, items: [
+      { label: "BCom Tuition", cls: "College / Other", subject: "Commerce" }, { label: "BSc Tuition", cls: "College / Other" },
+      { label: "BTech Tuition", cls: "College / Other" }, { label: "BBA Tuition", cls: "College / Other" }] },
+    { title: "By board", cols: 1, items: [
+      { label: "CBSE Tuition", board: "CBSE" }, { label: "State Board Tuition", board: "State Board" },
+      { label: "ICSE Tuition", board: "ICSE" }, { label: "IGCSE / IB Tuition", board: "IGCSE / IB" }] }
+  ] },
+  { tab: "Languages", groups: [
+    { title: "Spoken languages", cols: 2, items: [
+      { label: "Spoken English", subject: "English" }, { label: "Hindi Language", subject: "Hindi" },
+      { label: "Tamil Language", subject: "Tamil" }, { label: "French Language", note: "French" },
+      { label: "German Language", note: "German" }, { label: "Spanish Language", note: "Spanish" }] },
+    { title: "English tests", cols: 1, items: [
+      { label: "IELTS", note: "IELTS" }, { label: "PTE", note: "PTE" }, { label: "TOEFL", note: "TOEFL" }] }
+  ] },
+  { tab: "IT Courses", groups: [
+    { title: "Programming", cols: 2, items: [
+      { label: "Python", note: "Python" }, { label: "Java", note: "Java" },
+      { label: "C / C++", note: "C / C++" }, { label: "Web Development", note: "Web development" },
+      { label: "Data Science", note: "Data science" }, { label: "SQL & Databases", note: "SQL" }] },
+    { title: "Office & accounts", cols: 1, items: [
+      { label: "MS Office & Excel", note: "MS Office / Excel" }, { label: "Tally", note: "Tally" },
+      { label: "Basic Computer Course", note: "Basic computer course" }] },
+    { title: "For school students", cols: 1, items: [
+      { label: "Computer Science (School)", subject: "Computer Science" }, { label: "Coding for Kids", note: "Coding for kids" }] }
+  ].map((g) => ({ ...g, items: g.items.map((i) => ({ cls: "College / Other", subject: "Computer Science", ...i })) })) },
+  { tab: "Exam Coaching", groups: [
+    { title: "Entrance exams", cols: 1, items: [
+      { label: "NEET Coaching", note: "NEET coaching" }, { label: "JEE Main & Advanced", note: "JEE coaching" },
+      { label: "CUET Coaching", note: "CUET coaching" }] },
+    { title: "Government exams", cols: 1, items: [
+      { label: "UPSC / IAS Coaching", note: "UPSC coaching" }, { label: "TNPSC Group Exams", note: "TNPSC coaching" },
+      { label: "Bank & SSC Exams", note: "Bank / SSC coaching" }] },
+    { title: "School level", cols: 1, items: [
+      { label: "Olympiad Coaching", note: "Olympiad coaching" }, { label: "NTSE Coaching", note: "NTSE coaching" },
+      { label: "Board Exam Revision", note: "Board exam revision" }] }
+  ] }
+];
