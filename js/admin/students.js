@@ -1,0 +1,215 @@
+// Students — converted bookings with tutor, schedule and monthly fee
+import { put, remove } from "../db.js";
+import { CLASSES, BOARDS, CITIES } from "../site-config.js";
+import { $, $$, esc, fmtPhone, fmtDate, normPhone, inr, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, ICONS } from "./ui.js";
+import { feeFor, feePill } from "./common.js";
+
+const st = { q: "", status: "Active", tutor: "", fee: "" };
+let root, ctx, openedParam = null;
+
+function rows() {
+  const mk = monthKey();
+  const q = st.q.toLowerCase();
+  return ctx.students.filter((s) => {
+    if (st.status && (s.status || "Active") !== st.status) return false;
+    if (st.tutor === "none" && s.tutorId) return false;
+    if (q && ![s.name, s.parentName, s.phone, s.subjects, s.tutorName, s.area].join(" ").toLowerCase().includes(q)) return false;
+    if (st.fee) { const f = feeFor(s, ctx.payments, mk); if (f.status !== st.fee) return false; }
+    return true;
+  });
+}
+
+function render(view, c, params) {
+  root = view; ctx = c;
+  view.innerHTML = `
+    <div class="page-head">
+      <div><h1>Students</h1><p>Converted leads with their tutor, schedule and monthly fee.</p></div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="sExport">${ICONS.download}Export to Excel</button>
+        <button class="btn btn-navy" id="sAdd">${ICONS.plus}Add student</button>
+      </div>
+    </div>
+    <div class="stats" id="sStats"></div>
+    <div class="filters">
+      <div class="fld grow"><label for="sQ">Search</label><input id="sQ" placeholder="Student, parent, mobile, tutor" value="${esc(st.q)}"></div>
+      <div class="fld"><label for="sStatus">Status</label><select id="sStatus">${options(["Active", "Inactive"], st.status, "All")}</select></div>
+      <div class="fld"><label for="sTutor">Tutor</label><select id="sTutor"><option value="">Any</option><option value="none" ${st.tutor === "none" ? "selected" : ""}>Not assigned</option></select></div>
+      <div class="fld"><label for="sFee">${esc(monthLabel(monthKey()))} fee</label><select id="sFee">${options(["Paid", "Partial", "Due"], st.fee, "All")}</select></div>
+    </div>
+    <div id="sList"></div>`;
+  $("#sQ", view).addEventListener("input", debounce((e) => { st.q = e.target.value.trim(); renderList(); }, 200));
+  $("#sStatus", view).addEventListener("change", (e) => { st.status = e.target.value; renderList(); });
+  $("#sTutor", view).addEventListener("change", (e) => { st.tutor = e.target.value; renderList(); });
+  $("#sFee", view).addEventListener("change", (e) => { st.fee = e.target.value; renderList(); });
+  $("#sAdd", view).addEventListener("click", () => editStudent(null));
+  $("#sExport", view).addEventListener("click", exportStudents);
+  $("#sList", view).addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const s = ctx.students.find((x) => x.id === b.dataset.id); if (!s) return;
+    if (b.dataset.act === "view") viewStudent(s);
+    if (b.dataset.act === "edit") editStudent(s);
+  });
+  renderList();
+  if (params && params.id && openedParam !== params.id) {
+    openedParam = params.id;
+    const s = ctx.students.find((x) => x.id === params.id);
+    if (s) viewStudent(s);
+  }
+  if (ctx.tutors == null) ctx.ensureTutors().catch(() => {});
+}
+
+function renderStats() {
+  const act = ctx.students.filter((s) => (s.status || "Active") === "Active");
+  const home = act.filter((s) => s.mode !== "Online tuition").length;
+  const mk = monthKey();
+  const joined = ctx.students.filter((s) => (s.joinDate || "").slice(0, 7) === mk).length;
+  const noTutor = act.filter((s) => !s.tutorId).length;
+  $("#sStats", root).innerHTML = `
+    <div class="stat"><span>Active students</span><b>${act.length}</b></div>
+    <div class="stat"><span>Home tuition</span><b>${home}</b></div>
+    <div class="stat"><span>Online tuition</span><b>${act.length - home}</b></div>
+    <div class="stat"><span>Joined this month</span><b>${joined}</b></div>
+    <div class="stat ${noTutor ? "warn" : ""}"><span>Without a tutor</span><b>${noTutor}</b></div>`;
+}
+
+function renderList() {
+  if (!root) return;
+  renderStats();
+  if (!ctx.loaded.students) { $("#sList", root).innerHTML = `<div class="panel empty">Loading students…</div>`; return; }
+  const mk = monthKey();
+  const list = rows();
+  $("#sList", root).innerHTML = list.length ? `
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>Student</th><th>Class · subjects</th><th>Tutor · type</th><th>Schedule</th><th class="num">Fee / month</th><th>${esc(monthLabel(mk).split(" ")[0])} fee</th><th></th></tr></thead>
+      <tbody>${list.map((s) => {
+        const f = feeFor(s, ctx.payments, mk);
+        return `<tr>
+          <td><span class="strong">${esc(s.name)}</span><span class="sub">${esc(s.parentName)} · ${esc(fmtPhone(s.phone))}</span></td>
+          <td>${esc(s.studentClass)}${s.board ? " · " + esc(s.board) : ""}<span class="sub">${esc(s.subjects)}</span></td>
+          <td>${s.tutorName ? esc(s.tutorName) : `<a class="pill p-due" href="#/allocation?student=${esc(s.id)}" style="text-decoration:none">Allocate tutor</a>`}<span class="sub">${esc(s.mode === "Online tuition" ? "Online" : "Home")} · ${esc([s.area, s.city].filter(Boolean).join(", "))}</span></td>
+          <td>${esc(s.schedule || "—")}</td>
+          <td class="num">${inr(s.monthlyFee)}</td>
+          <td>${(s.status || "Active") === "Active" ? feePill(f.status) + (f.status === "Partial" ? `<span class="sub">Bal ${inr(f.balance)}</span>` : "") : '<span class="pill p-lost">Inactive</span>'}</td>
+          <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-act="view" data-id="${esc(s.id)}">View</button> <button class="btn btn-ghost btn-sm" data-act="edit" data-id="${esc(s.id)}">Edit</button></td>
+        </tr>`;
+      }).join("")}</tbody></table></div>` : `<div class="panel empty">${ctx.students.length ? "No students match these filters." : "No students yet. Convert a booking from Bookings / Leads, or add a student here."}</div>`;
+}
+
+function tutorPicker(current) {
+  const list = (ctx.tutors || []).filter((t) => (t.status || "Active") === "Active");
+  return `<input name="tutorPick" list="tutorList" value="${esc(current ? `${current.tutorName || ""}${current.tutorPhone ? " · " + current.tutorPhone : ""}` : "")}" placeholder="Type tutor name or mobile">
+    <datalist id="tutorList">${list.map((t) => `<option value="${esc(t.name + " · " + normPhone(t.phone))}">`).join("")}</datalist>`;
+}
+function resolveTutor(pick) {
+  if (!pick) return { tutorId: "", tutorName: "", tutorPhone: "" };
+  const ph = normPhone(pick.split("·").pop());
+  const t = (ctx.tutors || []).find((x) => normPhone(x.phone) === ph) || (ctx.tutors || []).find((x) => x.name.toLowerCase() === pick.toLowerCase().trim());
+  return t ? { tutorId: t.id, tutorName: t.name, tutorPhone: normPhone(t.phone) } : null;
+}
+
+function editStudent(s) {
+  const v = s || { status: "Active", city: "Chennai", mode: "Home tuition", joinDate: todayISO() };
+  modal({
+    title: s ? "Edit student" : "Add student",
+    body: `
+      <div class="form-grid" id="stForm">
+        <div class="fld"><label>Student name *</label><input name="name" value="${esc(v.name)}"></div>
+        <div class="fld"><label>Parent name</label><input name="parentName" value="${esc(v.parentName)}"></div>
+        <div class="fld"><label>Parent mobile *</label><input name="phone" inputmode="numeric" value="${esc(v.phone)}"></div>
+        <div class="fld"><label>Email</label><input name="email" type="email" value="${esc(v.email)}"></div>
+        <div class="fld"><label>Class</label><select name="studentClass">${options(CLASSES, v.studentClass, "—")}</select></div>
+        <div class="fld"><label>Board</label><select name="board">${options(BOARDS, v.board, "—")}</select></div>
+        <div class="fld full"><label>Subjects</label><input name="subjects" value="${esc(v.subjects)}"></div>
+        <div class="fld"><label>Tuition type</label><select name="mode">${options(["Home tuition", "Online tuition"], v.mode)}</select></div>
+        <div class="fld"><label>Schedule</label><input name="schedule" value="${esc(v.schedule)}" placeholder="Mon, Wed, Fri · 6 – 8 PM"></div>
+        <div class="fld"><label>Area</label><input name="area" value="${esc(v.area)}"></div>
+        <div class="fld"><label>City</label><select name="city">${options(CITIES, v.city, "—")}</select></div>
+        <div class="fld full"><label>Address</label><input name="address" value="${esc(v.address)}"></div>
+        <div class="fld full"><label>Tutor</label>${tutorPicker(s)}</div>
+        <div class="fld"><label>Monthly fee (₹) *</label><input name="monthlyFee" type="number" min="0" step="50" value="${esc(v.monthlyFee)}"></div>
+        <div class="fld"><label>Join date</label><input name="joinDate" type="date" value="${esc(v.joinDate)}"></div>
+        <div class="fld"><label>Status</label><select name="status">${options(["Active", "Inactive"], v.status || "Active")}</select></div>
+      </div>`,
+    actions: [
+      ...(s && ctx.isAdmin ? [{ label: "Delete", kind: "btn-danger", onClick: async () => {
+        if (!(await confirmBox("Delete student?", `Delete <b>${esc(s.name)}</b>? Their receipts stay in Receipts. Usually it is better to mark the student Inactive.`, "Delete"))) return false;
+        await remove("students", s.id); toast("Student deleted");
+      } }] : []),
+      { label: "Cancel" },
+      {
+        label: s ? "Save changes" : "Add student", kind: "btn-navy", onClick: async (close, m) => {
+          const f = readFields($("#stForm", m));
+          const pick = f.tutorPick; delete f.tutorPick;
+          f.phone = normPhone(f.phone);
+          if (!f.name || f.phone.length !== 10 || f.monthlyFee === "") { toast("Student name, 10-digit mobile and monthly fee are required", "bad"); return false; }
+          const tut = resolveTutor(pick);
+          if (!tut) { toast("Tutor not found — pick one from the list or leave it empty", "bad"); return false; }
+          f.monthlyFee = Number(f.monthlyFee);
+          await put("students", s ? { ...f, ...tut, id: s.id } : { ...f, ...tut });
+          toast(s ? "Student updated" : "Student added", "ok");
+        }
+      }
+    ]
+  });
+}
+
+function viewStudent(s) {
+  const pays = ctx.payments.filter((p) => p.studentId === s.id);
+  const mk = monthKey();
+  const f = feeFor(s, ctx.payments, mk);
+  const total = pays.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+  modal({
+    title: s.name,
+    wide: true,
+    body: `
+      <div class="stats">
+        <div class="stat"><span>Monthly fee</span><b>${inr(s.monthlyFee)}</b></div>
+        <div class="stat"><span>${esc(monthLabel(mk))}</span><b style="font-size:18px;margin-top:6px">${feePill(f.status)}</b></div>
+        <div class="stat good"><span>Total paid</span><b>${inr(total)}</b></div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h2>Details</h2>
+          <div class="kv" style="display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:13px">
+            <span class="sub">Parent</span><b style="font-weight:500">${esc(s.parentName)} · ${esc(fmtPhone(s.phone))}</b>
+            <span class="sub">Class</span><b style="font-weight:500">${esc(s.studentClass)} ${s.board ? "· " + esc(s.board) : ""}</b>
+            <span class="sub">Subjects</span><b style="font-weight:500">${esc(s.subjects)}</b>
+            <span class="sub">Tuition</span><b style="font-weight:500">${esc(s.mode)}</b>
+            <span class="sub">Location</span><b style="font-weight:500">${esc([s.address, s.area, s.city].filter(Boolean).join(", ") || "—")}</b>
+            <span class="sub">Schedule</span><b style="font-weight:500">${esc(s.schedule || "—")}</b>
+            <span class="sub">Tutor</span><b style="font-weight:500">${esc(s.tutorName || "Not assigned")}${s.tutorPhone ? " · " + esc(fmtPhone(s.tutorPhone)) : ""}</b>
+            <span class="sub">Joined</span><b style="font-weight:500">${esc(fmtDate(s.joinDate))}</b>
+            ${s.bookingNo ? `<span class="sub">Booking</span><b style="font-weight:500">${esc(s.bookingNo)}</b>` : ""}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+            <a class="btn btn-ghost btn-sm" href="tel:+91${esc(normPhone(s.phone))}">${ICONS.phone}Call parent</a>
+            <a class="btn btn-wa btn-sm" href="${esc(waLink(s.phone, `Hello ${s.parentName || ""}, this is CF Academy regarding ${s.name}'s tuition.`))}" target="_blank" rel="noopener">${ICONS.wa}WhatsApp</a>
+            ${s.tutorPhone ? `<a class="btn btn-ghost btn-sm" href="tel:+91${esc(s.tutorPhone)}">${ICONS.phone}Call tutor</a>` : ""}
+          </div>
+        </div>
+        <div class="panel"><div class="panel-head"><h2>Payments</h2><a class="btn btn-accent btn-sm" href="#/receipts?student=${esc(s.id)}">${ICONS.plus}Record payment</a></div>
+          ${pays.length ? `<div class="table-wrap"><table class="t"><thead><tr><th>Receipt</th><th>For</th><th class="num">Amount</th></tr></thead><tbody>
+            ${pays.map((p) => `<tr><td><a href="#/receipts?id=${esc(p.id)}">${esc(p.receiptNo)}</a><span class="sub">${esc(fmtDate(p.date))} · ${esc(p.payMode)}</span></td><td>${esc(p.monthsLabel)}</td><td class="num">${inr(p.amount)}</td></tr>`).join("")}
+          </tbody></table></div>` : `<p class="sub">No payments recorded yet.</p>`}
+        </div>
+      </div>`,
+    actions: [{ label: "Edit student", kind: "btn-ghost", onClick: () => { setTimeout(() => editStudent(s), 0); } }, { label: "Close", kind: "btn-navy" }]
+  });
+}
+
+function exportStudents() {
+  const mk = monthKey();
+  exportXlsx({
+    Students: rows().map((s) => {
+      const f = feeFor(s, ctx.payments, mk);
+      return {
+        "Student": s.name, "Parent": s.parentName, "Mobile": s.phone, "Email": s.email || "", "Class": s.studentClass, "Board": s.board || "",
+        "Subjects": s.subjects, "Tuition": s.mode, "Area": s.area || "", "City": s.city || "", "Address": s.address || "", "Schedule": s.schedule || "",
+        "Tutor": s.tutorName || "", "Tutor mobile": s.tutorPhone || "", "Monthly fee": Number(s.monthlyFee) || 0,
+        [`${monthLabel(mk)} status`]: f.status, "Join date": s.joinDate || "", "Status": s.status || "Active"
+      };
+    })
+  }, `CF-Academy-Students-${todayISO()}.xlsx`);
+}
+
+function refresh() { renderList(); }
+export default { deps: ["students", "payments", "tutors"], render, refresh };

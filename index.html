@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CF Academy | No.1 Home Tuition &amp; Online Tuition in Chennai &amp; Tamil Nadu</title>
+<meta name="description" content="CF Academy (Challenge Future Academy) — home tuition and online tuition across Chennai and Tamil Nadu since 2010. 850+ faculty for all subjects, LKG to Class 12. Book a tutor in a minute.">
+<meta name="theme-color" content="#0A2A66">
+<meta property="og:title" content="CF Academy — No.1 Home Tuition &amp; Online Tuition">
+<meta property="og:description" content="850+ faculty across Chennai &amp; Tamil Nadu. Book a home or online tutor for your child.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/logo-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "CF Academy",
+  "logo": "assets/logo.png",
+  "alternateName": "Challenge Future Academy",
+  "foundingDate": "2010",
+  "founder": [{"@type": "Person", "name": "R. Nirmal"}, {"@type": "Person", "name": "V. Akshya"}],
+  "telephone": ["+91-8190870673", "+91-8072135956"],
+  "areaServed": ["Chennai", "Tamil Nadu"]
+}
+</script>
+<script>
+// Opened by double-clicking the file? ES modules + Firebase need a web server.
+if (location.protocol === "file:") {
+  document.addEventListener("DOMContentLoaded", function () {
+    var m = '<div style="max-width:620px;margin:60px auto;padding:24px;font:15px/1.6 system-ui,sans-serif;border:2px solid #0B7A62;border-radius:14px;background:#fff;color:#1B2433">' +
+      '<h2 style="margin:0 0 8px;color:#0A2A66">Open this site through a web server</h2>' +
+      '<p>This page was opened as a file (<code>file://</code>). Browsers block the JavaScript modules and Firebase login this way.</p>' +
+      '<p><b>Easiest:</b> in VS Code, install the <b>Live Server</b> extension, right-click <code>admin.html</code> → <b>Open with Live Server</b>.</p>' +
+      '<p><b>Or</b> open a terminal in this folder and run <code>python -m http.server 8080</code>, then go to <a href="http://localhost:8080/admin.html">http://localhost:8080/admin.html</a>.</p></div>';
+    document.body.innerHTML = m;
+  });
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="CF Academy home">
+      <img src="assets/logo-192.png" alt="Challenge Future Academy logo" width="52" height="52">
+      <span><b>CF Academy</b><small>Challenge Future Academy · Since 2010</small></span>
+    </a>
+    <button class="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav"><span></span></button>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="#services">Services</a>
+      <a href="#how">How it works</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+      <a class="btn btn-accent" href="#book">Book a Tutor</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="reveal">
+        <span class="eyebrow">Powered by IAS / IES / IIT Alumni</span>
+        <h1>No.1 <span class="hl">Home Tuition</span> &amp; Online Tuition for your child</h1>
+        <p class="lead">Tell us the subject and your location. CF Academy matches your child with the right tutor from our 850+ faculty — at your home, or online at a time that suits you.</p>
+        <div class="hero-cta">
+          <a class="btn btn-accent" href="#book">Book a Tutor</a>
+          <a class="btn btn-ghost" href="tel:+918190870673" data-site="tel1">Call 81908 70673</a>
+        </div>
+        <ul class="hero-points">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>LKG to Class 12, all boards</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Your days, your time</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>All over Chennai &amp; Tamil Nadu</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Since 2010</li>
+        </ul>
+      </div>
+
+      <figure class="hero-photo reveal">
+        <picture>
+          <source type="image/webp" srcset="assets/hero-student-800.webp 800w, assets/hero-student.webp 1400w" sizes="(max-width: 960px) 100vw, 560px">
+          <img src="assets/hero-student.jpg" alt="Student studying at her desk with a laptop and books" width="1400" height="788" fetchpriority="high">
+        </picture>
+        <figcaption class="hero-badge"><b>850+</b><span>Faculty across<br>Chennai &amp; TN</span></figcaption>
+      </figure>
+
+      <form class="quick-card reveal" id="quickForm" aria-labelledby="quickTitle">
+        <div class="qc-title">
+          <h2 id="quickTitle">Find a tutor in 1 minute</h2>
+          <p>Tuition type, subject and location.</p>
+        </div>
+        <div class="mode-toggle" role="group" aria-label="Tuition type">
+          <button type="button" data-qmode="Home tuition" aria-pressed="true">Home</button>
+          <button type="button" data-qmode="Online tuition" aria-pressed="false">Online</button>
+        </div>
+        <div class="field">
+          <label for="qSubject">Subject</label>
+          <select id="qSubject"></select>
+        </div>
+        <div class="field">
+          <label for="qClass">Class</label>
+          <select id="qClass"></select>
+        </div>
+        <div class="field" id="qAreaField">
+          <label for="qArea">Your area / location</label>
+          <input id="qArea" placeholder="e.g. Velachery, Tambaram" autocomplete="address-level3">
+        </div>
+        <button class="btn btn-accent" type="submit">Continue booking</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats" aria-label="CF Academy at a glance">
+    <div class="wrap">
+      <div class="stat"><b>850+</b><span>Faculty members</span></div>
+      <div class="stat"><b>17+ yrs</b><span>Teaching experience</span></div>
+      <div class="stat"><b>2010</b><span>Serving families since</span></div>
+      <div class="stat"><b>Chennai &amp; TN</b><span>Home &amp; online coverage</span></div>
+    </div>
+  </section>
+
+  <!-- AD BANNERS (managed in Admin → Banners; hidden when there are none) -->
+  <section class="banners" id="banners" aria-label="Announcements" hidden>
+    <div class="wrap">
+      <div class="slider" id="slider" aria-roledescription="carousel">
+        <div class="slides" id="slides" aria-live="polite"></div>
+        <button class="sl-nav sl-prev" type="button" aria-label="Previous slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="sl-nav sl-next" type="button" aria-label="Next slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <div class="sl-dots" id="slDots" role="group" aria-label="Choose slide"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="block" id="services">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Our services</span>
+        <h2>Two ways to learn with CF Academy</h2>
+        <p>One-to-one attention from an experienced tutor, at home or online.</p>
+      </div>
+      <div class="grid-2">
+        <article class="card service-card featured reveal">
+          <div class="icon-badge accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg></div>
+          <h3>Home Tuition</h3>
+          <p>A verified tutor comes to your home on the days and time you choose.</p>
+          <ul>
+            <li>Tutors near your area across Chennai &amp; Tamil Nadu</li>
+            <li>One-to-one or siblings together</li>
+            <li>Regular progress updates to parents</li>
+          </ul>
+        </article>
+        <article class="card service-card reveal">
+          <div class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
+          <h3>Online Tuition</h3>
+          <p>Live one-to-one classes from anywhere, with the same quality of teaching.</p>
+          <ul>
+            <li>Learn from home — no travel</li>
+            <li>Flexible timings, including weekends</li>
+            <li>Ideal for students outside Chennai</li>
+          </ul>
+        </article>
+      </div>
+      <div class="prog-head reveal">
+        <h3>Our tuition programmes</h3>
+        <p>From the first alphabet to board exams and beyond.</p>
+      </div>
+      <div class="programs" id="programs"></div>
+    </div>
+  </section>
+
+  <!-- SUBJECTS -->
+  <section class="block alt" id="subjects">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Subjects</span>
+        <h2>Every subject, LKG to Class 12</h2>
+        <p>State Board, CBSE, ICSE, Matriculation and more.</p>
+      </div>
+      <div class="subjects reveal" id="subjectList"></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="block" id="how">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">How it works</span>
+        <h2>Book a tutor in three simple steps</h2>
+      </div>
+      <div class="grid-3 steps">
+        <div class="step reveal"><div class="num">1</div><h3>Share your need</h3><p>Fill the short booking form with subject, class, location and preferred time.</p></div>
+        <div class="step reveal"><div class="num">2</div><h3>Send on WhatsApp</h3><p>Your details are drafted into a WhatsApp message to CF Academy — just tap send.</p></div>
+        <div class="step reveal"><div class="num">3</div><h3>We call &amp; assign a tutor</h3><p>Our team calls you, confirms the details and assigns the best-matched tutor.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOOKING -->
+  <section class="block alt" id="book">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Book a tutor</span>
+        <h2>Tell us what your child needs</h2>
+        <p>It takes about a minute. Fields marked <span style="color:var(--err)">*</span> are required.</p>
+      </div>
+
+      <div class="book-wrap">
+        <div class="book-form">
+          <form id="bookForm" novalidate>
+            <fieldset>
+              <legend><span class="n">1</span>Type of tuition</legend>
+              <div class="mode-cards">
+                <label class="mode-card">
+                  <input type="radio" name="mode" value="Home tuition" checked>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+                  <span><b>Home tuition</b><small>Tutor comes to your home</small></span>
+                </label>
+                <label class="mode-card">
+                  <input type="radio" name="mode" value="Online tuition">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+                  <span><b>Online tuition</b><small>Live classes from anywhere</small></span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="n">2</span>Student details</legend>
+              <div class="row three">
+                <div class="f" data-f="studentName">
+                  <label for="studentName">Student name <span class="req">*</span></label>
+                  <input id="studentName" name="studentName" autocomplete="off" maxlength="60">
+                  <span class="err-msg">Please enter the student's name</span>
+                </div>
+                <div class="f" data-f="studentClass">
+                  <label for="studentClass">Class <span class="req">*</span></label>
+                  <select id="studentClass" name="studentClass"></select>
+                  <span class="err-msg">Please choose the class</span>
+                </div>
+                <div class="f">
+                  <label for="board">Board</label>
+                  <select id="board" name="board"></select>
+                </div>
+              </div>
+              <div class="f" data-f="subjects">
+                <span class="lbl" id="subjLbl">Subjects needed <span class="req" style="color:var(--err)">*</span></span>
+                <div class="chips" id="subjectChips" role="group" aria-labelledby="subjLbl"></div>
+                <span class="err-msg">Please choose at least one subject</span>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="n">3</span>Location &amp; timing</legend>
+              <div class="row">
+                <div class="f" data-f="area">
+                  <label for="area">Area / locality <span class="req" id="areaReq">*</span></label>
+                  <input id="area" name="area" placeholder="e.g. Velachery" maxlength="80" autocomplete="address-level3">
+                  <span class="err-msg">Please enter your area for home tuition</span>
+                </div>
+                <div class="f" data-f="city">
+                  <label for="city">City / district <span class="req">*</span></label>
+                  <select id="city" name="city"></select>
+                  <span class="err-msg">Please choose the city</span>
+                </div>
+              </div>
+              <div class="f" id="addressField">
+                <label for="address">Address / landmark (for home tuition)</label>
+                <input id="address" name="address" placeholder="Door no, street, landmark" maxlength="160" autocomplete="street-address">
+              </div>
+              <div class="f">
+                <span class="lbl" id="daysLbl">Preferred days</span>
+                <div class="chips" id="dayChips" role="group" aria-labelledby="daysLbl"></div>
+              </div>
+              <div class="row">
+                <div class="f">
+                  <label for="time">Preferred time</label>
+                  <select id="time" name="time"></select>
+                </div>
+                <div class="f">
+                  <label for="startDate">Start from</label>
+                  <input id="startDate" name="startDate" type="date">
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="n">4</span>Parent contact</legend>
+              <div class="row">
+                <div class="f" data-f="parentName">
+                  <label for="parentName">Parent name <span class="req">*</span></label>
+                  <input id="parentName" name="parentName" autocomplete="name" maxlength="60">
+                  <span class="err-msg">Please enter your name</span>
+                </div>
+                <div class="f" data-f="phone">
+                  <label for="phone">Mobile number <span class="req">*</span></label>
+                  <input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="10-digit mobile" maxlength="18">
+                  <span class="err-msg">Please enter a valid 10-digit mobile number</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="f" data-f="email">
+                  <label for="email">Email (optional)</label>
+                  <input id="email" name="email" type="email" autocomplete="email" maxlength="80">
+                  <span class="err-msg">Please check the email address</span>
+                </div>
+                <div class="f">
+                  <label for="notes">Anything else? (optional)</label>
+                  <input id="notes" name="notes" placeholder="e.g. Prefer female tutor, exam in March" maxlength="200">
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="submit-row">
+              <button class="btn btn-wa" type="submit" id="submitBtn">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3a.5.5 0 0 0 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2s.2-1.1.1-1.2-.2-.1-.4-.2z"/></svg>
+                Book &amp; send on WhatsApp
+              </button>
+              <small>Your details go only to CF Academy. We open WhatsApp with your booking drafted — just tap Send.</small>
+            </div>
+          </form>
+
+          <div class="book-done" id="bookDone" aria-live="polite">
+            <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></div>
+            <h3>Booking received!</h3>
+            <div class="bid" id="doneId"></div>
+            <p>Please tap <b>Send</b> in WhatsApp so our team gets your details instantly. We will call you to confirm the tutor.</p>
+            <div class="actions">
+              <a class="btn btn-wa" id="doneWa" href="#" target="_blank" rel="noopener">Open WhatsApp again</a>
+              <a class="btn btn-ghost" href="tel:+918190870673" data-site="tel1">Call us</a>
+              <button class="btn btn-ghost" type="button" id="newBooking">Book for another child</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="book-aside">
+          <div class="aside-card">
+            <h3>What happens next</h3>
+            <ol>
+              <li>WhatsApp opens with your booking drafted</li>
+              <li>Our counsellor calls you to confirm</li>
+              <li>We assign a tutor for your subject &amp; area</li>
+              <li>Classes start on your chosen days</li>
+            </ol>
+          </div>
+          <div class="aside-call">
+            <h3>Prefer to talk?</h3>
+            <p>Call us directly — we are happy to help.</p>
+            <a class="btn btn-navy" href="tel:+918190870673" data-site="tel1">81908 70673</a>
+            <a class="btn btn-ghost" href="tel:+918072135956" data-site="tel2">80721 35956</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="block" id="about">
+    <div class="wrap about">
+      <div class="reveal">
+        <span class="eyebrow">About CF Academy</span>
+        <h2 style="font-size:clamp(26px,3.2vw,36px);color:var(--navy);line-height:1.2;margin:12px 0">Helping students learn better since 2010</h2>
+        <p>CF Academy (Challenge Future Academy) has guided students across Chennai and Tamil Nadu since 2010. Powered by IAS, IES and IIT alumni, with 17+ years of experience and a network of 850+ faculty members, we connect every child with a tutor who suits their subject, class and location.</p>
+        <p>Whether your child needs a tutor at home or prefers online classes, we take care of finding the right teacher so you can focus on your child's progress.</p>
+        <div class="coverage" style="justify-content:flex-start;margin-top:18px" id="coverageList"></div>
+      </div>
+      <div class="founders reveal">
+        <div class="founder"><div class="av">RN</div><b>R. Nirmal</b><span>M.E. · Founder</span></div>
+        <div class="founder"><div class="av">VA</div><b>V. Akshya</b><span>MSE · Founder</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="block alt" id="contact">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Contact</span>
+        <h2>Talk to CF Academy</h2>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-card reveal">
+          <div class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></div>
+          <div><b>Call us</b><a href="tel:+918190870673" data-site="tel1">81908 70673</a><br><a href="tel:+918072135956" data-site="tel2">80721 35956</a></div>
+        </div>
+        <div class="contact-card reveal">
+          <div class="icon-badge accent"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg></div>
+          <div><b>WhatsApp</b><a href="https://wa.me/918190870673" target="_blank" rel="noopener" data-site="wa">Chat with us</a><p>Quick replies during working hours</p></div>
+        </div>
+        <div class="contact-card reveal">
+          <div class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+          <div><b>Office</b><p data-site="address">[OFFICE ADDRESS], Chennai, Tamil Nadu</p><a href="#" data-site="map" target="_blank" rel="noopener" hidden>Get directions</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div>
+      <b>CF Academy</b><br>
+      Challenge Future Academy · Since 2010<br>
+      Powered by IAS / IES / IIT Alumni<br>
+      No.1 Home Tuition &amp; Online Tuition
+    </div>
+    <div class="links">
+      <a href="#services">Services</a>
+      <a href="#book">Book a Tutor</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="copy">
+      <span>© <span id="year">2026</span> CF Academy. All rights reserved.</span>
+      <span>Website by Think Through Technology</span>
+    </div>
+  </div>
+</footer>
+
+<div class="floating">
+  <a class="float-btn float-wa" href="https://wa.me/918190870673?text=Hello%20CF%20Academy%2C%20I%20need%20a%20tutor%20for%20my%20child." target="_blank" rel="noopener" aria-label="Chat on WhatsApp" data-site="wa-float">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3a.5.5 0 0 0 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2s.2-1.1.1-1.2-.2-.1-.4-.2z"/></svg>
+  </a>
+  <a class="float-btn float-call" href="tel:+918190870673" aria-label="Call CF Academy" data-site="tel1">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+  </a>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/site.js"></script>
+</body>
+</html>

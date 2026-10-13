@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>CF Academy · Admin</title>
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/logo-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin.css">
+<!-- SheetJS: Excel import / export -->
+<script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+// Opened by double-clicking the file? ES modules + Firebase need a web server.
+if (location.protocol === "file:") {
+  document.addEventListener("DOMContentLoaded", function () {
+    var m = '<div style="max-width:620px;margin:60px auto;padding:24px;font:15px/1.6 system-ui,sans-serif;border:2px solid #0B7A62;border-radius:14px;background:#fff;color:#1B2433">' +
+      '<h2 style="margin:0 0 8px;color:#0A2A66">Open this site through a web server</h2>' +
+      '<p>This page was opened as a file (<code>file://</code>). Browsers block the JavaScript modules and Firebase login this way.</p>' +
+      '<p><b>Easiest:</b> in VS Code, install the <b>Live Server</b> extension, right-click <code>admin.html</code> → <b>Open with Live Server</b>.</p>' +
+      '<p><b>Or</b> open a terminal in this folder and run <code>python -m http.server 8080</code>, then go to <a href="http://localhost:8080/admin.html">http://localhost:8080/admin.html</a>.</p></div>';
+    document.body.innerHTML = m;
+  });
+}
+</script>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="boot" style="min-height:100%;display:grid;place-items:center;color:#4A5568">Loading…</div>
+
+<!-- Login -->
+<div class="login" id="loginView" hidden>
+  <form class="login-card" id="loginForm">
+    <div class="brand">
+      <img src="assets/logo-192.png" alt="">
+      <div><h1>CF Academy Admin</h1><p>Sign in to manage bookings, tutors and fees</p></div>
+    </div>
+    <div class="demo-note" id="demoNote" hidden>Demo mode: Firebase is not connected yet. Use any email and the password <b>demo</b>. Data stays in this browser only.</div>
+    <div class="fld" style="margin-bottom:12px">
+      <label for="lEmail">Email</label>
+      <input id="lEmail" type="email" autocomplete="username" required>
+    </div>
+    <div class="fld" style="margin-bottom:16px">
+      <label for="lPass">Password</label>
+      <input id="lPass" type="password" autocomplete="current-password" required>
+    </div>
+    <div class="note bad" id="loginErr" hidden style="margin-bottom:12px"></div>
+    <button class="btn btn-navy btn-block" style="min-height:46px" type="submit" id="loginBtn">Sign in</button>
+    <div style="text-align:center;margin-top:10px"><button type="button" class="link-btn" id="forgotBtn">Forgot password?</button></div>
+  </form>
+</div>
+
+<!-- App -->
+<div class="shell" id="appView" hidden>
+  <aside class="side" id="side">
+    <a class="brand" href="#/dashboard">
+      <img src="assets/logo-192.png" alt="">
+      <span><b>CF Academy</b><small>Admin panel</small></span>
+    </a>
+    <nav id="sideNav" aria-label="Admin"></nav>
+    <div class="foot">
+      Signed in as<b id="whoami"></b><span id="whorole" class="role-tag"></span>
+      <button type="button" id="myPassBtn">Change my password</button>
+      <button type="button" id="logoutBtn">Sign out</button>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <button class="menu-toggle" type="button" id="menuToggle" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <b>CF Academy Admin</b>
+    </div>
+    <div class="demo-bar" id="demoBar" hidden>Demo mode — Firebase not connected. Data is saved in this browser only. <button class="link-btn" id="resetDemo" type="button">Reset demo data</button></div>
+    <main class="view" id="view"></main>
+  </div>
+</div>
+
+<script type="module" src="js/admin/app.js"></script>
+</body>
+</html>
