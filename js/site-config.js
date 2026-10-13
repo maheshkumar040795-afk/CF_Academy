@@ -83,70 +83,71 @@ export const PROGRAMS = [
     image: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1791899127/IT_course.jpg", cls: "College / Other", subject: "Computer Science" }
 ];
 
-// "Find a tutor for anything" tabbed table (UrbanPro style, without hobbies).
-// Each item can pre-fill the booking form: cls (class), subject (one of SUBJECTS), mode, or note.
-// TODO (client): confirm the IT courses and exams you actually offer.
+// "Find a tutor for anything" tabbed table (UrbanPro layout, without Hobby Classes).
+// Each item can pre-fill the booking form: cls (class), subject (one of SUBJECTS), board, or note.
+// badge: "New" shows a small red "New" label.
+const L = (label, extra = {}) => ({ label, note: label, ...extra });
+const IT = (label) => ({ label, note: label, cls: "College / Other", subject: "Computer Science" });
 export const CATEGORIES = [
   { tab: "Online Classes", mode: "Online tuition", groups: [
     { title: "Tuitions", cols: 2, items: [
-      { label: "Class 12 Tuition", cls: "Class 12" }, { label: "Class 7 Tuition", cls: "Class 7" },
-      { label: "Class 11 Tuition", cls: "Class 11" }, { label: "Class 6 Tuition", cls: "Class 6" },
-      { label: "Class 10 Tuition", cls: "Class 10" }, { label: "Class I-V Tuition", cls: "Class 1" },
-      { label: "Class 9 Tuition", cls: "Class 9" }, { label: "BCom Tuition", cls: "College / Other", subject: "Commerce" },
-      { label: "Class 8 Tuition", cls: "Class 8" }, { label: "BTech Tuition", cls: "College / Other" }] },
+      { label: "Class 12 Tuition", cls: "Class 12" }, { label: "Class 11 Tuition", cls: "Class 11" },
+      { label: "Class 10 Tuition", cls: "Class 10" }, { label: "Class 9 Tuition", cls: "Class 9" },
+      { label: "Class 8 Tuition", cls: "Class 8" }, { label: "Class 7 Tuition", cls: "Class 7" },
+      { label: "Class 6 Tuition", cls: "Class 6" }, { label: "Class I-V Tuition", cls: "Class 1" },
+      { label: "BCom Tuition", cls: "College / Other", subject: "Commerce" }, { label: "BTech Tuition", cls: "College / Other" }] },
     { title: "Languages", cols: 2, items: [
-      { label: "Spoken English", subject: "English" }, { label: "IELTS", note: "IELTS" },
-      { label: "French Language", note: "French" }, { label: "PTE", note: "PTE" },
-      { label: "Spanish Language", note: "Spanish" }, { label: "TOEFL", note: "TOEFL" },
-      { label: "German Language", note: "German" }, { label: "Tamil Language", subject: "Tamil" },
-      { label: "Hindi Language", subject: "Hindi" }] },
+      { label: "Spoken English", subject: "English" }, L("French Language"), L("Spanish Language"),
+      L("German Language"), { label: "Hindi Language", subject: "Hindi" }, L("IELTS"), L("PTE"), L("TOEFL")] },
     { title: "More", cols: 1, items: [
-      { label: "Online Tuitions" }, { label: "Online Language Classes", note: "Language classes" },
-      { label: "Online IT Coaching", cls: "College / Other", subject: "Computer Science" },
-      { label: "Online Exam Entrance Coaching", note: "Entrance exam coaching" }] }
+      { label: "Online Tuitions" }, L("Online Language Classes"),
+      IT("Online IT Coaching"), L("Online Exam Entrance Coaching")] }
   ] },
   { tab: "Tuition", groups: [
-    { title: "School tuition", cols: 2, items: [
-      { label: "Nursery – KG Tuition", cls: "LKG" }, { label: "Class 8 Tuition", cls: "Class 8" },
-      { label: "Class I-V Tuition", cls: "Class 1" }, { label: "Class 9 Tuition", cls: "Class 9" },
-      { label: "Class 6 Tuition", cls: "Class 6" }, { label: "Class 10 Tuition", cls: "Class 10" },
-      { label: "Class 7 Tuition", cls: "Class 7" }, { label: "Class 11 Tuition", cls: "Class 11" },
-      { label: "Class 12 Tuition", cls: "Class 12" }] },
-    { title: "College tuition", cols: 1, items: [
-      { label: "BCom Tuition", cls: "College / Other", subject: "Commerce" }, { label: "BSc Tuition", cls: "College / Other" },
-      { label: "BTech Tuition", cls: "College / Other" }, { label: "BBA Tuition", cls: "College / Other" }] },
-    { title: "By board", cols: 1, items: [
-      { label: "CBSE Tuition", board: "CBSE" }, { label: "State Board Tuition", board: "State Board" },
-      { label: "ICSE Tuition", board: "ICSE" }, { label: "IGCSE / IB Tuition", board: "IGCSE / IB" }] }
+    { title: "School", cols: 2, items: [
+      { label: "Class 12 Tuition", cls: "Class 12" }, { label: "Class 11 Tuition", cls: "Class 11" },
+      { label: "Class 10 Tuition", cls: "Class 10" }, { label: "Class 9 Tuition", cls: "Class 9" },
+      { label: "Class 8 Tuition", cls: "Class 8" }, { label: "Class 7 Tuition", cls: "Class 7" },
+      { label: "Class 6 Tuition", cls: "Class 6" }, { label: "Class 1 to 5 Tuition", cls: "Class 1" },
+      { label: "Nursery-KG Tuition", cls: "LKG" }] },
+    { title: "College", cols: 1, items: [
+      { label: "BTech Tuition", cls: "College / Other" }, { label: "BCom Tuition", cls: "College / Other", subject: "Commerce" },
+      { label: "Engineering Diploma Tuition", cls: "College / Other" }, { label: "BBA Tuition", cls: "College / Other" },
+      { label: "BSc Tuition", cls: "College / Other" }] },
+    { title: "Subject", cols: 1, items: [
+      { label: "Mathematics", subject: "Mathematics" }, { label: "English", subject: "English" },
+      { label: "Science", subject: "Science" }, { label: "Physics", subject: "Physics" }, { label: "Hindi", subject: "Hindi" }] },
+    { title: "More", cols: 1, items: [
+      { label: "All Tuitions" }, { label: "Online Tuitions", mode: "Online tuition" },
+      L("NCERT Solutions", { badge: "New" }), { label: "CBSE Syllabus", board: "CBSE", note: "CBSE syllabus", badge: "New" }] }
   ] },
   { tab: "Languages", groups: [
-    { title: "Spoken languages", cols: 2, items: [
-      { label: "Spoken English", subject: "English" }, { label: "Hindi Language", subject: "Hindi" },
-      { label: "Tamil Language", subject: "Tamil" }, { label: "French Language", note: "French" },
-      { label: "German Language", note: "German" }, { label: "Spanish Language", note: "Spanish" }] },
-    { title: "English tests", cols: 1, items: [
-      { label: "IELTS", note: "IELTS" }, { label: "PTE", note: "PTE" }, { label: "TOEFL", note: "TOEFL" }] }
+    { title: "Foreign Languages", cols: 1, items: [
+      { label: "Spoken English", subject: "English" }, L("German Language"), L("French Language"),
+      L("Spanish Language"), L("Japanese Language")] },
+    { title: "Indian Languages", cols: 1, items: [
+      { label: "Hindi Language", subject: "Hindi" }, L("Kannada Language"), { label: "Tamil Language", subject: "Tamil" },
+      L("Telugu Language"), L("Marathi Speaking")] },
+    { title: "Other Languages", cols: 1, items: [
+      L("Chinese Language"), L("Arabic Language"), L("Russian Language"), L("Italian Language"), L("Sanskrit Language")] },
+    { title: "More", cols: 1, items: [ L("All Languages") ] }
   ] },
   { tab: "IT Courses", groups: [
-    { title: "Programming", cols: 2, items: [
-      { label: "Python", note: "Python" }, { label: "Java", note: "Java" },
-      { label: "C / C++", note: "C / C++" }, { label: "Web Development", note: "Web development" },
-      { label: "Data Science", note: "Data science" }, { label: "SQL & Databases", note: "SQL" }] },
-    { title: "Office & accounts", cols: 1, items: [
-      { label: "MS Office & Excel", note: "MS Office / Excel" }, { label: "Tally", note: "Tally" },
-      { label: "Basic Computer Course", note: "Basic computer course" }] },
-    { title: "For school students", cols: 1, items: [
-      { label: "Computer Science (School)", subject: "Computer Science" }, { label: "Coding for Kids", note: "Coding for kids" }] }
-  ].map((g) => ({ ...g, items: g.items.map((i) => ({ cls: "College / Other", subject: "Computer Science", ...i })) })) },
+    { title: "Programming Languages", cols: 1, items: [
+      IT("Python Training"), IT("Java Training"), IT(".Net Training"), IT("C++ Language"), IT("C Language")] },
+    { title: "IT Training", cols: 1, items: [
+      IT("Microsoft Excel Training"), IT("SAP"), IT("Selenium"), IT("Angular.JS"), IT("Amazon Web Services")] },
+    { title: "Other IT Courses", cols: 1, items: [
+      IT("PHP"), IT("Java Script Training"), IT("Adobe Photoshop Training"), IT("DevOps Training"), IT("Data Science")] },
+    { title: "More", cols: 1, items: [ IT("All IT Courses"), IT("Software Training Institutes") ] }
+  ] },
   { tab: "Exam Coaching", groups: [
-    { title: "Entrance exams", cols: 1, items: [
-      { label: "NEET Coaching", note: "NEET coaching" }, { label: "JEE Main & Advanced", note: "JEE coaching" },
-      { label: "CUET Coaching", note: "CUET coaching" }] },
-    { title: "Government exams", cols: 1, items: [
-      { label: "UPSC / IAS Coaching", note: "UPSC coaching" }, { label: "TNPSC Group Exams", note: "TNPSC coaching" },
-      { label: "Bank & SSC Exams", note: "Bank / SSC coaching" }] },
-    { title: "School level", cols: 1, items: [
-      { label: "Olympiad Coaching", note: "Olympiad coaching" }, { label: "NTSE Coaching", note: "NTSE coaching" },
-      { label: "Board Exam Revision", note: "Board exam revision" }] }
+    { title: "Study Abroad", cols: 1, items: [
+      L("IELTS Coaching"), L("PTE Academic Exam Coaching"), L("GRE Coaching"), L("GMAT Coaching"), L("TOEFL Coaching")] },
+    { title: "Study in India", cols: 1, items: [
+      L("Engineering Entrance Coaching"), L("CA Coaching"), L("MBA Entrance Coaching"), L("Medical Entrance Coaching"), L("CET Coaching")] },
+    { title: "Other Exams", cols: 1, items: [
+      L("IBPS Exam Coaching"), L("UPSC Exams Coaching"), L("Staff Selection Commission Exam"), L("Bank Clerical Exam Coaching"), L("UGC NET Exam Coaching")] },
+    { title: "More", cols: 1, items: [ L("All Exam Coaching Classes") ] }
   ] }
 ];

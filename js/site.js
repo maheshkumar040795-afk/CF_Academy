@@ -1,6 +1,6 @@
 // CF Academy — public website logic
-import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners } from "./db.js";
+import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610132045";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners } from "./db.js?v=202610132045";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -275,6 +275,7 @@ function prefillBooking(it, mode) {
   if (it.board) $("#board").value = it.board;
   if (it.subject && SUBJECTS.includes(it.subject)) setChips($("#subjectChips"), [it.subject]);
   const note = it.note || (!it.cls && !it.subject && !it.board ? it.label : "");
+  if (!note && !it.subject) $("#notes").value = $("#notes").value.replace(/^Interested in: .*$/, "");
   if (note) $("#notes").value = "Interested in: " + note;
   $$(".f.invalid").forEach((f) => f.classList.remove("invalid"));
   $("#book").scrollIntoView({ behavior: "smooth" });
@@ -295,7 +296,7 @@ function initExplore() {
     panel.innerHTML = cat.groups.map((g, gi) => `
       <div class="ex-group">
         <h3>${escAttr(g.title)}</h3>
-        <ul class="ex-list ${g.cols === 2 ? "c2" : ""}">${g.items.map((it, ii) => `<li><button type="button" data-g="${gi}" data-i="${ii}">${escAttr(it.label)}</button></li>`).join("")}</ul>
+        <ul class="ex-list ${g.cols === 2 ? "c2" : ""}" ${g.cols === 2 ? `style="grid-template-rows:repeat(${Math.ceil(g.items.length / 2)},auto);grid-auto-flow:column"` : ""}>${g.items.map((it, ii) => `<li><button type="button" data-g="${gi}" data-i="${ii}">${escAttr(it.label)}${it.badge ? `<sup class="ex-new">${escAttr(it.badge)}</sup>` : ""}</button></li>`).join("")}</ul>
       </div>`).join("");
   };
   tabs.addEventListener("click", (e) => { const t = e.target.closest(".ex-tab"); if (t) show([...tabs.children].indexOf(t)); });
@@ -307,7 +308,8 @@ function initExplore() {
   panel.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-g]"); if (!b) return;
     const cat = CATEGORIES[cur];
-    prefillBooking(cat.groups[Number(b.dataset.g)].items[Number(b.dataset.i)], cat.mode);
+    const it = cat.groups[Number(b.dataset.g)].items[Number(b.dataset.i)];
+    prefillBooking(it, it.mode || cat.mode);
   });
   show(0);
 }
