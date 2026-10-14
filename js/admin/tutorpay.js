@@ -122,6 +122,7 @@ const payPill = (p) => !p ? `<span class="pill p-lost">Not paid</span>` : p.stat
 // ───────────────────────── Tutor salary modal ─────────────────────────
 export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
   let t = tutor;
+  startType = "month"; // monthly salary only
   const S = { type: startType, key: startKey || currentPeriod(startType), edits: {}, leaveDays: 0, leaveHrs: null, deduction: null, adjust: 0, adjustNote: "", payMode: "UPI", reference: "", paidOn: todayISO() };
 
   const m = modal({
@@ -137,10 +138,7 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
         </div>
       </div>
       <div class="tp-period">
-        <div class="seg" role="group" aria-label="Salary period">
-          <button type="button" data-type="month">Monthly</button><button type="button" data-type="week">Weekly</button>
-        </div>
-        <div class="fld"><label for="tpKey" class="sr">Period</label><select id="tpKey"></select></div>
+        <div class="fld"><label for="tpKey">Salary month</label><select id="tpKey"></select></div>
       </div>
       <div id="tpBody"></div>
       <div id="tpHist"></div>`,
@@ -387,12 +385,12 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
 
   function renderHist() {
     if (!document.body.contains(root)) return;
-    const hist = (ctx.tutorPayouts || []).filter((p) => p.tutorId === t.id).sort((a, b) => String(b.periodKey).localeCompare(String(a.periodKey)));
+    const hist = (ctx.tutorPayouts || []).filter((p) => p.tutorId === t.id && p.periodType === "month").sort((a, b) => String(b.periodKey).localeCompare(String(a.periodKey)));
     const paidTotal = hist.filter((p) => p.status === "Paid").reduce((a, p) => a + (Number(p.net) || 0), 0);
     $("#tpHist", root).innerHTML = hist.length ? `
       <h3 class="tp-h">Salary history <span class="sub" style="display:inline">· ${inr(paidTotal)} paid in total</span></h3>
       <div class="table-wrap"><table class="t"><thead><tr><th>Period</th><th class="num">Hours</th><th class="num">Leave</th><th class="num">Net</th><th>Status</th><th>Paid on</th></tr></thead>
-      <tbody>${hist.slice(0, 24).map((p) => `<tr class="clickable" data-pt="${esc(p.periodType)}" data-pk="${esc(p.periodKey)}"><td>${esc(p.periodLabel)}<span class="sub">${p.periodType === "week" ? "Weekly" : "Monthly"}</span></td><td class="num">${esc(p.totalHours)}</td><td class="num">${p.leaveDays ? esc(p.leaveDays) + " d" : "—"}</td><td class="num strong">${inr(p.net)}</td><td>${payPill(p)}</td><td>${esc(fmtDate(p.paidOn) || "—")}<span class="sub">${esc(p.payMode && p.status === "Paid" ? p.payMode : "")}</span></td></tr>`).join("")}</tbody></table></div>` : "";
+      <tbody>${hist.slice(0, 24).map((p) => `<tr class="clickable" data-pt="${esc(p.periodType)}" data-pk="${esc(p.periodKey)}"><td>${esc(p.periodLabel)}</td><td class="num">${esc(p.totalHours)}</td><td class="num">${p.leaveDays ? esc(p.leaveDays) + " d" : "—"}</td><td class="num strong">${inr(p.net)}</td><td>${payPill(p)}</td><td>${esc(fmtDate(p.paidOn) || "—")}<span class="sub">${esc(p.payMode && p.status === "Paid" ? p.payMode : "")}</span></td></tr>`).join("")}</tbody></table></div>` : "";
     $$("tr[data-pt]", $("#tpHist", root)).forEach((tr) => tr.addEventListener("click", () => {
       S.type = tr.dataset.pt; S.key = tr.dataset.pk; resetForm(); fillKeys(); renderBody();
       $("#tpBody", root).scrollIntoView({ behavior: "smooth", block: "start" });
@@ -410,8 +408,7 @@ export function openSalarySheet(ctx) {
     wide: true,
     body: `
       <div class="tp-period">
-        <div class="seg" role="group" aria-label="Salary period"><button type="button" data-type="month">Monthly</button><button type="button" data-type="week">Weekly</button></div>
-        <div class="fld"><select id="ssKey" aria-label="Period"></select></div>
+        <div class="fld"><select id="ssKey" aria-label="Salary month"></select></div>
         <div class="fld"><select id="ssStatus" aria-label="Status">${options(["Not paid", "Pending", "Paid"], "", "All tutors")}</select></div>
         <button class="btn btn-ghost btn-sm" type="button" id="ssExport">${ICONS.download}Export</button>
       </div>
