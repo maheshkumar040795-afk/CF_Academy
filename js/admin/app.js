@@ -1,6 +1,6 @@
 // CF Academy admin — app shell: login, navigation, live data
 import { isDemo, adminLogin, adminLogout, onAdminAuth, resetPassword, watch, list, resetDemoData, getRole } from "../db.js";
-import { $, $$, esc, toast, ICONS } from "./ui.js";
+import { $, $$, esc, toast, modal, ICONS } from "./ui.js";
 import dashboard from "./dashboard.js";
 import bookings from "./bookings.js";
 import tutors from "./tutors.js";
@@ -49,6 +49,28 @@ function emit(key) { subs.forEach((fn) => fn(key)); }
 let unsubs = [];
 let current = null;
 let seenBookings = null;
+let justLoggedIn = false;
+
+// Welcome popup shown right after signing in (not on every page refresh)
+function welcome() {
+  const raw = ctx.role.name || ctx.user.email || "";
+  const name = raw.includes("@") ? raw.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : raw;
+  const h = new Date().getHours();
+  const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  modal({
+    title: "Welcome to CF Academy Admin",
+    body: `
+      <div class="welcome">
+        <img src="assets/logo-192.png" alt="" width="72" height="72">
+        <p class="w-greet">${esc(greet)},</p>
+        <p class="w-name">${esc(name)} 👋</p>
+        <span class="role-pill">${esc(ctx.role.role)}</span>
+        <p class="sub" style="margin-top:12px">${esc(new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))}</p>
+        <p style="margin:10px 0 0">You are signed in as <b>${esc(ctx.user.email || "")}</b>. Have a great day!</p>
+      </div>`,
+    actions: [{ label: "Let's start", kind: "btn-navy" }]
+  });
+}
 
 function startData() {
   const onErr = (err) => {
@@ -168,6 +190,7 @@ function init() {
     btn.disabled = true;
     btn.textContent = "Signing in…";
     try {
+      justLoggedIn = true;
       await adminLogin($("#lEmail").value.trim(), $("#lPass").value);
     } catch (ex) {
       const code = ex.code || "";
@@ -175,6 +198,7 @@ function init() {
         ? "Email or password is incorrect."
         : code.includes("too-many-requests") ? "Too many attempts. Please wait a few minutes." : ex.message;
       err.hidden = false;
+      justLoggedIn = false;
     } finally {
       btn.disabled = false;
       btn.textContent = "Sign in";
@@ -213,6 +237,7 @@ function init() {
     ctx.role = role;
     ctx.isAdmin = role.role === "Owner" || role.role === "Admin";
     showApp();
+    if (justLoggedIn) { justLoggedIn = false; setTimeout(welcome, 250); }
   }).catch((e) => {
     $("#boot").textContent = "Could not connect: " + e.message;
   });

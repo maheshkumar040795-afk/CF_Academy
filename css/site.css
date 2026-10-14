@@ -629,3 +629,23 @@ section.block.alt { background: var(--bg-2); }
 .bt-send { width: 100%; justify-content: center; margin-top: 6px; gap: 8px; }
 .bt-note { display: block; margin-top: 8px; text-align: center; color: var(--muted); font-size: 12.5px; }
 @media (max-width: 640px) { .bt-tab { font-size: 13px; padding: 12px 8px; top: 42%; } }
+
+/* ── Blue header (logo-blue gradient) ── */
+.site-header { background: linear-gradient(90deg, var(--navy) 0%, var(--navy-2) 70%, #0F5F7A 100%); border-bottom: 0; }
+.site-header.scrolled { box-shadow: 0 6px 24px rgba(10, 42, 102, .28); }
+.site-header .brand, .site-header .brand b { color: #fff; }
+.site-header .brand small { color: rgba(255, 255, 255, .78); }
+.site-header .brand img { background: #fff; box-shadow: 0 0 0 2px rgba(255, 255, 255, .6); }
+.site-header .nav a:not(.btn) { color: rgba(255, 255, 255, .92); }
+.site-header .nav a:not(.btn):hover, .site-header .nav a[aria-current="page"] { color: #fff; }
+.site-header .nav a:not(.btn)::after { background: var(--accent-light, #3FD1AE); }
+.site-header .nav a.nav-admin { color: #fff; border-color: rgba(255, 255, 255, .45); }
+.site-header .nav a.nav-admin:hover { background: rgba(255, 255, 255, .12); border-color: #fff; }
+.site-header .nav .btn-accent { box-shadow: 0 0 0 1px rgba(255, 255, 255, .25); }
+.site-header .menu-btn { border-color: rgba(255, 255, 255, .45); }
+.site-header .menu-btn span, .site-header .menu-btn span::before, .site-header .menu-btn span::after { background: #fff; }
+@media (max-width: 820px) {
+  /* dropdown menu stays white for easy reading */
+  .site-header .nav a:not(.btn), .site-header .nav a.nav-admin { color: var(--ink); }
+  .site-header .nav a.nav-admin { border-color: var(--line); }
+}

@@ -273,6 +273,19 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 }
 
 /* ── Print: receipts only ── */
+/* ── Receipt row actions ── */
+.rc-acts { white-space: nowrap; }
+.rc-acts > * { vertical-align: middle; margin-left: 4px; }
+.icon-btn.wa-btn { background: #E7F8EE; border-color: #9ED9B4; color: #15803D; }
+.icon-btn.wa-btn:hover { background: #15803D; color: #fff; border-color: #15803D; }
+
+/* ── Welcome popup ── */
+.welcome { text-align: center; padding: 6px 4px 2px; }
+.welcome img { border-radius: 50%; box-shadow: 0 6px 20px rgba(10, 42, 102, .18); }
+.w-greet { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
+.w-name { margin: 2px 0 8px; color: var(--navy); font-size: 26px; font-weight: 700; line-height: 1.2; }
+.role-pill { display: inline-block; padding: 3px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+
 /* ── Admin → website links ── */
 .side .site-link { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 12px; border-radius: 9px; border: 1px dashed #2B4C7E; color: #C9D6EA; text-decoration: none; font-weight: 500; }
 .side .site-link svg { width: 19px; height: 19px; flex: none; }

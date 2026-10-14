@@ -68,6 +68,10 @@ function render(view, c, params) {
   $("#rList", view).addEventListener("click", (e) => {
     const del = e.target.closest("[data-del]");
     if (del) { const p = ctx.payments.find((x) => x.id === del.dataset.del); if (p) deleteReceipt(p); return; }
+    const pdf = e.target.closest("[data-pdf]");
+    if (pdf) { const p = ctx.payments.find((x) => x.id === pdf.dataset.pdf); if (p) downloadPdf(p, pdf); return; }
+    const sh = e.target.closest("[data-share]");
+    if (sh) { const p = ctx.payments.find((x) => x.id === sh.dataset.share); if (p) shareWhatsApp(p, sh); return; }
     const tr = e.target.closest("tr[data-id]"); if (!tr) return;
     st.shownId = tr.dataset.id; renderPreview(); renderList();
     $("#rPreview", root).scrollIntoView({ behavior: "smooth", block: "start" });
@@ -188,12 +192,91 @@ function renderPreview() {
   box.innerHTML = `
     <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-bottom:10px">
       <button class="btn btn-ghost" id="rPrint">${ICONS.print}Print / Save PDF</button>
-      <a class="btn btn-wa" href="${esc(waLink(p.phone, text))}" target="_blank" rel="noopener">${ICONS.wa}Send on WhatsApp</a>
+      <button class="btn btn-ghost" type="button" id="rPdf">${ICONS.download}Download PDF</button>
+      <button class="btn btn-wa" type="button" id="rShare">${ICONS.wa}Share PDF on WhatsApp</button>
       ${ctx.isAdmin ? `<button class="btn btn-danger" id="rDel">Delete</button>` : ""}
     </div>
     ${receiptHTML(p)}`;
   $("#rPrint", box).addEventListener("click", () => window.print());
+  $("#rPdf", box).addEventListener("click", (e) => downloadPdf(p, e.currentTarget));
+  $("#rShare", box).addEventListener("click", (e) => shareWhatsApp(p, e.currentTarget));
   $("#rDel", box) && $("#rDel", box).addEventListener("click", () => deleteReceipt(p));
+}
+
+// ── PDF receipt (html2canvas + jsPDF, loaded only when first needed) ──
+const LIBS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+];
+let libsP = null;
+function loadLibs() {
+  if (!libsP) {
+    libsP = Promise.all(LIBS.map((src) => new Promise((ok, bad) => {
+      const sc = document.createElement("script");
+      sc.src = src; sc.async = true; sc.onload = ok;
+      sc.onerror = () => { libsP = null; bad(new Error("Could not load the PDF tool — check the internet connection")); };
+      document.head.appendChild(sc);
+    })));
+  }
+  return libsP;
+}
+const pdfName = (p) => `CF-Academy-Receipt-${String(p.receiptNo).replace(/[^\w-]+/g, "-")}.pdf`;
+
+async function makePdf(p) {
+  await loadLibs();
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;left:-10000px;top:0;width:760px;background:#fff;padding:0";
+  host.innerHTML = receiptHTML(p);
+  document.body.appendChild(host);
+  try {
+    await Promise.all([...host.querySelectorAll("img")].map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })));
+    const canvas = await window.html2canvas(host.firstElementChild, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pw = 210, margin = 12, w = pw - margin * 2;
+    const h = (canvas.height * w) / canvas.width;
+    doc.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", margin, margin, w, h);
+    doc.setProperties({ title: `Fee receipt ${p.receiptNo}`, author: SITE.name });
+    return doc.output("blob");
+  } finally { host.remove(); }
+}
+function saveBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+async function busy(btn, fn) {
+  const old = btn && btn.innerHTML;
+  if (btn) { btn.disabled = true; btn.style.opacity = ".6"; }
+  try { await fn(); } catch (ex) { toast(ex.message || "Something went wrong", "bad"); }
+  finally { if (btn) { btn.disabled = false; btn.style.opacity = ""; btn.innerHTML = old; } }
+}
+function downloadPdf(p, btn) {
+  return busy(btn, async () => { saveBlob(await makePdf(p), pdfName(p)); toast("PDF downloaded", "ok"); });
+}
+function shareText(p) {
+  return `Dear ${p.parentName || "Parent"}, we have received ${inr(p.amount).replace("₹ ", "Rs. ")} towards ${p.studentName}'s tuition fee for ${p.monthsLabel}.\n` +
+    `Receipt no: ${p.receiptNo}\nDate: ${fmtDate(p.date)}\nPaid by: ${p.payMode}${p.reference ? " (Ref " + p.reference + ")" : ""}\n` +
+    `Please find the fee receipt attached. Thank you — ${SITE.name}`;
+}
+// WhatsApp links cannot carry files, so: on phones (and Chrome/Edge on Windows & Mac) the
+// share sheet sends the PDF + message — pick WhatsApp. Elsewhere the PDF downloads and
+// WhatsApp opens with the message, ready for the PDF to be attached.
+function shareWhatsApp(p, btn) {
+  return busy(btn, async () => {
+    const blob = await makePdf(p);
+    const file = new File([blob], pdfName(p), { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: shareText(p), title: `Fee receipt ${p.receiptNo}` });
+        return;
+      } catch (ex) { if (ex && ex.name === "AbortError") return; }
+    }
+    saveBlob(blob, pdfName(p));
+    window.open(waLink(p.phone, shareText(p)), "_blank", "noopener");
+    toast("PDF downloaded — in WhatsApp, tap 📎 and attach it, then Send.", "ok");
+  });
 }
 
 async function deleteReceipt(p) {
@@ -211,7 +294,7 @@ function renderList() {
   const list = ctx.payments.filter((p) => !q || [p.receiptNo, p.studentName, p.parentName, p.phone, p.reference].join(" ").toLowerCase().includes(q));
   $("#rList", root).innerHTML = !ctx.loaded.payments ? `<div class="empty">Loading…</div>` : list.length ? `
     <div class="table-wrap"><table class="t">
-      <thead><tr><th>Receipt</th><th>Student</th><th>For</th><th>Paid by</th><th class="num">Amount</th>${ctx.isAdmin ? "<th></th>" : ""}</tr></thead>
+      <thead><tr><th>Receipt</th><th>Student</th><th>For</th><th>Paid by</th><th class="num">Amount</th><th></th></tr></thead>
       <tbody>${list.slice(0, 300).map((p) => `
         <tr class="clickable ${p.id === st.shownId ? "sel" : ""}" data-id="${esc(p.id)}">
           <td><span class="strong">${esc(p.receiptNo)}</span><span class="sub">${esc(fmtDate(p.date))}</span></td>
@@ -219,7 +302,11 @@ function renderList() {
           <td>${esc(p.monthsLabel)}</td>
           <td>${esc(p.payMode)}<span class="sub">${esc(p.reference || "")}</span></td>
           <td class="num strong">${inr(p.amount)}</td>
-          ${ctx.isAdmin ? `<td><button class="btn btn-danger btn-sm" type="button" data-del="${esc(p.id)}" aria-label="Delete receipt ${esc(p.receiptNo)}">Delete</button></td>` : ""}
+          <td class="rc-acts">
+            <button class="btn btn-ghost btn-sm" type="button" data-pdf="${esc(p.id)}" title="Download PDF" aria-label="Download PDF of receipt ${esc(p.receiptNo)}">${ICONS.download}PDF</button>
+            <button class="icon-btn wa-btn" type="button" data-share="${esc(p.id)}" title="Share PDF on WhatsApp" aria-label="Share receipt ${esc(p.receiptNo)} on WhatsApp">${ICONS.wa}</button>
+            ${ctx.isAdmin ? `<button class="btn btn-danger btn-sm" type="button" data-del="${esc(p.id)}" aria-label="Delete receipt ${esc(p.receiptNo)}">Delete</button>` : ""}
+          </td>
         </tr>`).join("")}</tbody></table></div>
       ${list.length > 300 ? `<p class="sub">Showing latest 300 of ${list.length}. Search to find older receipts.</p>` : ""}` : `<div class="empty">No receipts yet.</div>`;
 }
