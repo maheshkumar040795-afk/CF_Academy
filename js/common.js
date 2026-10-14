@@ -1,7 +1,7 @@
 // CF Academy — shared website code (home, about, contact):
 // header + mobile menu, scroll progress, reveal-on-scroll, count-up numbers,
 // contact details from site-config, toast. Page scripts import the helpers.
-import { SITE } from "./site-config.js?v=202610142300";
+import { SITE } from "./site-config.js?v=202610142500";
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -112,7 +112,7 @@ function initContact() {
       const p = k === "tel1" ? p1 : p2;
       el.href = "tel:+91" + p;
       // replace a plain number shown as the link text (keeps "Call …" style labels)
-      if (/^\s*(call\s+)?[\d\s]{10,12}\s*$/i.test(el.textContent)) el.textContent = el.textContent.replace(/[\d\s]{10,12}\s*$/, fmtTel(p));
+      if (/^\s*(call\s+)?[\d\s]{10,12}\s*$/i.test(el.textContent)) el.textContent = el.textContent.replace(/\d[\d\s]{9,11}\s*$/, fmtTel(p));
     }
     if (k === "wa" && SITE.whatsapp) el.href = "https://wa.me/" + SITE.whatsapp;
     if (k === "wa-float" && SITE.whatsapp) el.href = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hello CF Academy, I need a tutor for my child.")}`;
@@ -123,12 +123,71 @@ function initContact() {
   if (y) y.textContent = new Date().getFullYear();
 }
 
+// ── "Become a Tutor": tab on the right edge → form → WhatsApp draft to CF Academy ──
+function initBecomeTutor() {
+  if ($("#btTab")) return;
+  const tab = document.createElement("button");
+  tab.type = "button"; tab.id = "btTab"; tab.className = "bt-tab";
+  tab.setAttribute("aria-haspopup", "dialog");
+  tab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg><span>Become a Tutor</span>';
+  const bg = document.createElement("div");
+  bg.className = "bt-bg"; bg.hidden = true;
+  bg.innerHTML = `
+    <div class="bt-box" role="dialog" aria-modal="true" aria-labelledby="btTitle">
+      <button type="button" class="bt-x" aria-label="Close">×</button>
+      <h2 id="btTitle">Become a Tutor</h2>
+      <p class="bt-sub">Join CF Academy's 850+ faculty. Fill in your details and send them to us on WhatsApp.</p>
+      <form id="btForm" novalidate>
+        <div class="f" data-f="btName"><label for="btName">Tutor name <span class="req">*</span></label><input id="btName" autocomplete="name" maxlength="60"><span class="err-msg">Please enter your name</span></div>
+        <div class="f" data-f="btPhone"><label for="btPhone">Contact number <span class="req">*</span></label><input id="btPhone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="18" placeholder="10-digit mobile"><span class="err-msg">Please enter a valid 10-digit mobile number</span></div>
+        <div class="f" data-f="btArea"><label for="btArea">Location <span class="req">*</span></label><input id="btArea" maxlength="80" placeholder="e.g. Anna Nagar, Chennai"><span class="err-msg">Please enter your location</span></div>
+        <div class="f" data-f="btSubj"><label for="btSubj">Subjects you teach <span class="req">*</span></label><input id="btSubj" maxlength="160" placeholder="e.g. Maths, Physics · Class 9–12 · NEET"><span class="err-msg">Please enter the subjects you teach</span></div>
+        <button class="btn btn-wa bt-send" type="submit"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="20" height="20"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>Submit on WhatsApp</button>
+        <small class="bt-note">WhatsApp opens with your details drafted — just tap Send.</small>
+      </form>
+    </div>`;
+  document.body.append(tab, bg);
+  const form = $("#btForm", bg);
+  let last = null;
+  const open = () => { last = document.activeElement; bg.hidden = false; document.body.style.overflow = "hidden"; setTimeout(() => $("#btName", bg).focus(), 50); };
+  const close = () => { bg.hidden = true; document.body.style.overflow = ""; last && last.focus && last.focus(); };
+  tab.addEventListener("click", open);
+  $(".bt-x", bg).addEventListener("click", close);
+  bg.addEventListener("mousedown", (e) => { if (e.target === bg) close(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !bg.hidden) close(); });
+  form.addEventListener("input", (e) => { const f = e.target.closest(".f"); f && f.classList.remove("invalid"); });
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = (id) => $("#" + id, bg).value.trim();
+    let phone = v("btPhone").replace(/\D/g, "");
+    if (phone.length === 12 && phone.startsWith("91")) phone = phone.slice(2);
+    if (phone.length === 11 && phone.startsWith("0")) phone = phone.slice(1);
+    const bad = { btName: !v("btName"), btPhone: !/^[6-9]\d{9}$/.test(phone), btArea: !v("btArea"), btSubj: !v("btSubj") };
+    Object.entries(bad).forEach(([k, b]) => $(`.f[data-f="${k}"]`, bg).classList.toggle("invalid", b));
+    const first = Object.keys(bad).find((k) => bad[k]);
+    if (first) { $("#" + first, bg).focus(); return; }
+    const text = [
+      "Hello CF Academy, I would like to join as a tutor.", "",
+      `*Tutor name:* ${v("btName")}`,
+      `*Contact number:* ${phone}`,
+      `*Location:* ${v("btArea")}`,
+      `*Subjects:* ${v("btSubj")}`
+    ].join("\n");
+    const win = window.open(`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(text)}`, "_blank");
+    try { if (win) win.opener = null; } catch (err) { /* ignore */ }
+    form.reset();
+    close();
+    toast(win ? "Thank you! Please tap Send in WhatsApp." : "Please allow pop-ups to open WhatsApp.");
+  });
+}
+
 function init() {
   initMenu();
   initScroll();
   initContact();
   reveal($$(".reveal"));
   initCounts();
+  initBecomeTutor();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
 else init();
