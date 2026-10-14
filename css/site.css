@@ -649,3 +649,15 @@ section.block.alt { background: var(--bg-2); }
   .site-header .nav a:not(.btn), .site-header .nav a.nav-admin { color: var(--ink); }
   .site-header .nav a.nav-admin { border-color: var(--line); }
 }
+
+/* ── Hero text: bolder, easier to read ── */
+.hero p.lead { font-weight: 600; color: #2D3748; }
+.hero-points li { font-weight: 600; color: var(--navy); }
+
+/* ── Header "Book a Tutor": clean white pill on the blue bar ── */
+.site-header .nav a.btn-accent { background: #fff; color: var(--navy); min-height: 42px; padding: 0 22px; border-radius: 999px; font-weight: 600; box-shadow: 0 4px 14px rgba(0, 0, 0, .12); }
+.site-header .nav a.btn-accent:hover { background: #F1FAF7; color: var(--accent); box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
+.site-header .nav a.btn-accent::after { display: none; }
+@media (max-width: 820px) {
+  .site-header .nav a.btn-accent { background: var(--accent); color: #fff; border-radius: 10px; min-height: 46px; box-shadow: none; }
+}
