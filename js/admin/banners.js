@@ -26,7 +26,7 @@ function render(view, c) {
           <canvas id="bnCanvas" width="${W}" height="${H}" hidden></canvas>
         </label>
         <div class="fld" id="bnFitWrap" hidden style="margin-top:10px"><label>This image is not ${W} × ${H}. How should it fit?</label>
-          <div class="seg" role="group" aria-label="Fit"><button type="button" data-fit="full" aria-pressed="true">Show full picture</button><button type="button" data-fit="crop" aria-pressed="false">Crop to fill</button></div></div>
+          <div class="seg" role="group" aria-label="Fit"><button type="button" data-fit="actual" aria-pressed="true">Actual size (as uploaded)</button><button type="button" data-fit="full" aria-pressed="false">Fit with blur</button><button type="button" data-fit="crop" aria-pressed="false">Crop</button></div></div>
         <div class="fld" id="bnPosWrap" hidden style="margin-top:10px"><label for="bnPos" id="bnPosLbl">Crop position</label><input id="bnPos" type="range" min="0" max="100" value="50"></div>
         <p class="sub" id="bnInfo" style="margin:8px 0 0"></p>
         <div class="form-grid" style="grid-template-columns:1fr;margin-top:12px">
@@ -78,7 +78,7 @@ function loadFile(file) {
     const posWrap = $("#bnPosWrap", root);
     const odd = Math.abs(ratio - target) >= 0.02;
     $("#bnFitWrap", root).hidden = !odd;
-    fit = "full";
+    fit = "actual";
     $$("[data-fit]", root).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === fit)));
     posWrap.hidden = true;
     $("#bnPosLbl", root).textContent = ratio > target ? "Crop position (left ↔ right)" : "Crop position (top ↕ bottom)";
@@ -87,7 +87,7 @@ function loadFile(file) {
     $("#bnDropText", root).hidden = true;
     const exact = img.naturalWidth === W && img.naturalHeight === H;
     $("#bnInfo", root).innerHTML = `${esc(file.name)} · ${img.naturalWidth} × ${img.naturalHeight} px` +
-      (exact ? " · perfect size" : img.naturalWidth < W * 0.7 ? ` · <span style="color:var(--err)">small image — it may look blurry on large screens</span>` :  !odd ? " · resized to fit" : " · whole picture shown — or choose Crop to fill");
+      (exact ? " · perfect size" : img.naturalWidth < W * 0.7 ? ` · <span style="color:var(--err)">small image — it may look blurry on large screens</span>` :  !odd ? " · resized to fit" : " · shown exactly as uploaded (the website banner takes this shape)");
     if (!$("#bnTitle", root).value) $("#bnTitle", root).value = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 120);
     $("#bnSave", root).disabled = rows.length >= MAX;
     draw();
@@ -99,7 +99,7 @@ function loadFile(file) {
 
 // "full": the whole picture, centred, with a soft blurred copy filling the sides (nothing cut off)
 // "crop": cover-crop into the 1756 × 450 canvas (slider picks the part to keep)
-let fit = "full";
+let fit = "actual";
 function setFit(f) {
   fit = f;
   $$("[data-fit]", root).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === f)));
@@ -111,7 +111,18 @@ function draw() {
   const cv = $("#bnCanvas", root);
   const c2 = cv.getContext("2d");
   const { img, w, h } = pending;
-  if (fit === "full" && !$("#bnFitWrap", root).hidden) {
+  // "actual": keep the uploaded picture's own shape — no crop, no blur (max 2000 px wide)
+  const odd = !$("#bnFitWrap", root).hidden;
+  const outW = odd && fit === "actual" ? Math.min(w, 2000) : W;
+  const outH = odd && fit === "actual" ? Math.round(outW * h / w) : H;
+  if (cv.width !== outW || cv.height !== outH) { cv.width = outW; cv.height = outH; }
+  pending.outW = outW; pending.outH = outH;
+  if (odd && fit === "actual") {
+    c2.imageSmoothingQuality = "high";
+    c2.drawImage(img, 0, 0, outW, outH);
+    return;
+  }
+  if (fit === "full" && odd) {
     const big = Math.max(W / w, H / h) * 1.15;
     c2.filter = "blur(28px) brightness(0.92)";
     c2.drawImage(img, (W - w * big) / 2, (H - h * big) / 2, w * big, h * big);
@@ -165,7 +176,7 @@ async function save(e) {
       sizeKB = Math.round(image.length * 0.75 / 1024);
     }
     const order = rows.length ? Math.max(...rows.map((r) => r.order || 0)) + 1 : 1;
-    await put("banners", { title, link, active: $("#bnActive", root).checked, order, image, publicId, width: W, height: H, sizeKB, uploadedBy: ctx.user.email });
+    await put("banners", { title, link, active: $("#bnActive", root).checked, order, image, publicId, width: pending.outW || W, height: pending.outH || H, sizeKB, uploadedBy: ctx.user.email });
     toast("Slide uploaded", "ok");
     resetForm();
   } catch (ex) {
@@ -201,7 +212,7 @@ function renderList() {
   if (rows.length >= MAX) $("#bnSave", root).disabled = true;
   box.innerHTML = rows.length ? rows.map((r, i) => `
     <div class="bn-item ${r.active === false ? "off" : ""}">
-      <img src="${esc(cld(r.image, 480))}" alt="${esc(r.title)}" loading="lazy">
+      <img src="${esc(cld(r.image, 480))}" alt="${esc(r.title)}" loading="lazy" style="aspect-ratio:${Number(r.width) || W}/${Number(r.height) || H}">
       <div class="bn-meta">
         <div><b>${i + 1}. ${esc(r.title)}</b>
           <span class="sub">${r.link ? "Opens: " + esc(r.link === "#book" ? "Book a tutor form" : r.link) : "No link"} · ${esc(r.sizeKB || "")} KB</span></div>
@@ -242,7 +253,7 @@ function editSlide(r) {
   const isCustom = r.link && r.link !== "#book";
   modal({
     title: "Edit slide",
-    body: `<img src="${esc(cld(r.image, 900))}" alt="" style="width:100%;border-radius:8px;aspect-ratio:${W}/${H};object-fit:cover;margin-bottom:12px">
+    body: `<img src="${esc(cld(r.image, 900))}" alt="" style="width:100%;border-radius:8px;aspect-ratio:${Number(r.width) || W}/${Number(r.height) || H};object-fit:cover;margin-bottom:12px">
       <div class="form-grid" style="grid-template-columns:1fr" id="beForm">
         <div class="fld"><label>Short description</label><input name="title" maxlength="120" value="${esc(r.title)}"></div>
         <div class="fld"><label>When clicked, go to</label><select name="linkType"><option value="#book" ${r.link === "#book" ? "selected" : ""}>Book a tutor form</option><option value="" ${!r.link ? "selected" : ""}>Nothing (image only)</option><option value="custom" ${isCustom ? "selected" : ""}>Another link…</option></select></div>
