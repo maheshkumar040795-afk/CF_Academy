@@ -73,6 +73,26 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    // "Meet our tutors" cards on the website: anyone can view, only admins change them
+    match /featuredTutors/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // Parent reviews: anyone can WRITE one (always starts unapproved);
+    // the public can read only approved reviews; the team approves / hides.
+    match /reviews/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'place', 'rating', 'text', 'approved', 'createdAt'])
+        && str(request.resource.data.name, 2, 60)
+        && (!('place' in request.resource.data) || str(request.resource.data.place, 0, 60))
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && str(request.resource.data.text, 10, 600)
+        && request.resource.data.approved == false
+        && request.resource.data.createdAt is int;
+      allow read: if resource.data.approved == true || isTeam();
+      allow update: if isTeam();
+      allow delete: if isAdmin();
+    }
     // staff logins: each person can read their own record; only admins manage them
     match /staff/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);

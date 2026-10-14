@@ -11,13 +11,16 @@ import reports from "./reports.js";
 import allocation from "./allocation.js";
 import staff from "./staff.js";
 import banners from "./banners.js";
+import webtutors from "./webtutors.js";
+import reviews from "./reviews.js";
 
-const ROUTES = { dashboard, bookings, tutors, students, allocation, fees, receipts, reports, banners, staff };
+const ROUTES = { dashboard, bookings, tutors, students, allocation, fees, receipts, reports, reviews, banners, webtutors, staff };
 // [route, label, adminOnly]
 const NAV = [
   ["dashboard", "Dashboard"], ["bookings", "Bookings / Leads"], ["tutors", "Tutors"],
   ["students", "Students"], ["allocation", "Student Allocation"], ["fees", "Fees"], ["receipts", "Receipts"],
-  ["reports", "Reports", true], ["banners", "Website Banners", true], ["staff", "Staff Config", true]
+  ["reports", "Reports", true], ["reviews", "Parent Reviews"], ["banners", "Website Banners", true],
+  ["webtutors", "Website Tutors", true], ["staff", "Staff Config", true]
 ];
 const allowed = (r) => { const n = NAV.find((x) => x[0] === r); return !!n && (!n[2] || ctx.isAdmin); };
 

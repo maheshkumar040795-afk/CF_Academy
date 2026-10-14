@@ -1,20 +1,8 @@
-// CF Academy — public website logic
-import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610132045";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners } from "./db.js?v=202610132045";
-
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-
-// ── Fill details from site-config ──
-function applySite() {
-  $$('[data-site="tel1"]').forEach((a) => (a.href = "tel:+91" + SITE.phones[0]));
-  $$('[data-site="tel2"]').forEach((a) => (a.href = "tel:+91" + (SITE.phones[1] || SITE.phones[0])));
-  $$('[data-site="wa"]').forEach((a) => (a.href = "https://wa.me/" + SITE.whatsapp));
-  $$('[data-site="wa-float"]').forEach((a) => (a.href = "https://wa.me/" + SITE.whatsapp + "?text=" + encodeURIComponent("Hello CF Academy, I need a tutor for my child.")));
-  $$('[data-site="address"]').forEach((p) => (p.textContent = SITE.address));
-  $$('[data-site="map"]').forEach((a) => { if (SITE.mapUrl) { a.href = SITE.mapUrl; a.hidden = false; } });
-  $("#year").textContent = new Date().getFullYear();
-}
+// CF Academy — home page: booking form, programmes, courses table, tutors, banners
+import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610131930";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610131930";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610131930";
+import { cld } from "./cloudinary.js?v=202610131930";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -34,39 +22,6 @@ function makeChips(box, items) {
 const chipValues = (box) => $$('.chip[aria-pressed="true"]', box).map((b) => b.dataset.v);
 function setChips(box, values) {
   $$(".chip", box).forEach((b) => b.setAttribute("aria-pressed", values.includes(b.dataset.v) ? "true" : "false"));
-}
-
-// ── Toast ──
-let toastT;
-function toast(msg) {
-  const t = $("#toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toastT);
-  toastT = setTimeout(() => t.classList.remove("show"), 3500);
-}
-
-// ── Mobile menu ──
-function initMenu() {
-  const btn = $(".menu-btn");
-  const nav = $("#nav");
-  btn.addEventListener("click", () => {
-    const open = nav.classList.toggle("open");
-    btn.setAttribute("aria-expanded", String(open));
-  });
-  nav.addEventListener("click", (e) => {
-    if (e.target.closest("a")) { nav.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); }
-  });
-}
-
-// ── Reveal on scroll ──
-function initReveal() {
-  const els = $$(".reveal");
-  if (!("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); return; }
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
-  }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
-  els.forEach((e) => io.observe(e));
 }
 
 // ── Booking form ──
@@ -244,7 +199,7 @@ function renderPrograms() {
     <article class="prog reveal">
       <div class="prog-media${p.image ? " has-img" : ""}">
         ${p.image
-          ? `<img class="bg" src="${escAttr(p.image)}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()"><img class="fg" src="${escAttr(p.image)}" alt="${escAttr(p.title)}" loading="lazy" decoding="async" onerror="this.parentNode.classList.remove('has-img');this.parentNode.querySelectorAll('img').forEach(function(i){i.remove()})">`
+          ? `<img class="bg" src="${escAttr(cld(p.image, 48, "e_blur:300"))}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()"><img class="fg" src="${escAttr(cld(p.image, 420))}" srcset="${escAttr(cld(p.image, 420))} 420w, ${escAttr(cld(p.image, 800))} 800w" sizes="(max-width: 640px) 92vw, (max-width: 960px) 46vw, 380px" alt="${escAttr(p.title)}" loading="lazy" decoding="async" onerror="this.parentNode.classList.remove('has-img');this.parentNode.querySelectorAll('img').forEach(function(i){i.remove()})">`
           : ""}
         <div class="ph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${PROG_ICONS[p.icon] || PROG_ICONS.book}</svg></div>
       </div>
@@ -255,6 +210,8 @@ function renderPrograms() {
         <button type="button" class="prog-cta" data-prog="${i}">Book now <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
       </div>
     </article>`).join("");
+  box.setAttribute("data-stagger", "");
+  reveal($$(".reveal", box));
   box.addEventListener("click", (e) => {
     const b = e.target.closest("[data-prog]");
     if (!b) return;
@@ -314,11 +271,37 @@ function initExplore() {
   show(0);
 }
 
+// ── Meet our tutors (cards managed in Admin → Website Tutors) ──
+const initials = (n) => String(n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+function renderTutors(list) {
+  const sec = $("#tutors"), box = $("#tutorList");
+  if (!sec || !box) return;
+  if (!list.length) { sec.hidden = true; return; }
+  box.innerHTML = list.map((t) => `
+    <article class="tutor reveal">
+      <div class="t-ph">${t.photo
+        ? `<img src="${escAttr(cld(t.photo, 200))}" alt="${escAttr(t.name)}" width="96" height="96" loading="lazy" decoding="async">`
+        : `<span class="t-in" aria-hidden="true">${escAttr(initials(t.name))}</span>`}</div>
+      <b>${escAttr(t.name)}</b>
+      ${t.experience ? `<span class="t-exp">${escAttr(/exp/i.test(t.experience) ? t.experience : t.experience + " experience")}</span>` : ""}
+      ${t.subject ? `<span class="t-sub">${escAttr(t.subject)}</span>` : ""}
+    </article>`).join("");
+  sec.hidden = false;
+  reveal($$(".reveal", sec));
+}
+async function initTutors() {
+  try { renderTutors(await listFeaturedTutors(renderTutors)); } catch (e) { console.warn("Tutors not loaded", e); }
+}
+
 // ── Ad banner slider (slides managed in Admin → Website Banners) ──
-const escAttr = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let bannersStarted = false;
 async function initBanners() {
   let list = [];
-  try { list = await listBanners(); } catch (e) { console.warn("Banners not loaded", e); return; }
+  try { list = await listBanners((fresh) => { if (!bannersStarted && fresh.length) buildBanners(fresh); }); } catch (e) { console.warn("Banners not loaded", e); return; }
+  if (list.length) buildBanners(list);
+}
+function buildBanners(list) {
+  bannersStarted = true;
   if (!list.length) return;
   const section = $("#banners");
   const slider = $("#slider");
@@ -327,7 +310,8 @@ async function initBanners() {
   track.innerHTML = list.map((b, i) => {
     const safeLink = b.link === "#book" || /^https?:\/\//i.test(b.link || "") ? b.link : "";
     const ext = /^https?:/i.test(safeLink);
-    const img = `<img src="${escAttr(b.image)}" alt="${escAttr(b.title)}" width="1756" height="450" ${i ? 'loading="lazy"' : ""} draggable="false">`;
+    const set = /res\.cloudinary\.com/.test(b.image) ? ` srcset="${escAttr(cld(b.image, 880))} 880w, ${escAttr(cld(b.image, 1400))} 1400w, ${escAttr(cld(b.image, 1756))} 1756w" sizes="(max-width: 1240px) 100vw, 1160px"` : "";
+    const img = `<img src="${escAttr(cld(b.image, 1756))}"${set} alt="${escAttr(b.title)}" width="1756" height="450" ${i ? 'loading="lazy"' : ""} decoding="async" draggable="false">`;
     return `<div class="slide" role="group" aria-roledescription="slide" aria-label="${i + 1} of ${list.length}">${safeLink ? `<a href="${escAttr(safeLink)}" ${ext ? 'target="_blank" rel="noopener"' : ""}>${img}</a>` : img}</div>`;
   }).join("");
   dots.innerHTML = list.map((b, i) => `<button type="button" aria-label="Show slide ${i + 1}"></button>`).join("");
@@ -335,7 +319,7 @@ async function initBanners() {
   if (list.length === 1) { slider.classList.add("single"); return; }
 
   let idx = 0, timer = null;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduce = reduceMotion;
   const go = (n) => {
     idx = (n + list.length) % list.length;
     track.style.transform = `translateX(-${idx * 100}%)`;
@@ -369,14 +353,8 @@ async function initBanners() {
 }
 
 function init() {
-  applySite();
-  initMenu();
   renderPrograms();
   initExplore();
-  initReveal();
-
-  $("#subjectList").innerHTML = SUBJECTS.map((s) => `<span>${s}</span>`).join("");
-  $("#coverageList").innerHTML = CITIES.slice(0, 10).map((c) => `<span>${c}</span>`).join("") + "<span>&amp; all over Tamil Nadu</span>";
 
   fillSelect($("#qSubject"), SUBJECTS, "Select");
   fillSelect($("#qClass"), CLASSES, "Select");
@@ -401,7 +379,8 @@ function init() {
   });
   $("#newBooking").addEventListener("click", resetForm);
   initQuick();
-  (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => initBanners());
+  // non-critical content loads after the page is interactive
+  idle(() => { initBanners(); initTutors(); });
 }
 
 init();

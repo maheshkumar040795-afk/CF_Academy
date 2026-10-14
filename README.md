@@ -13,12 +13,17 @@ Stack: plain HTML/CSS/JavaScript (no build step) · Firebase Firestore + Auth ·
 
 | Path | What it is |
 | --- | --- |
-| `index.html` | Public website (home, services, booking form, about, contact) |
+| `index.html` | Home page (services, programmes, courses table, tutors, booking form) |
+| `about.html` | About page (story, founders, why us, cities) |
+| `contact.html` | Contact page (call, WhatsApp, office map, parent reviews) |
 | `admin.html` | Admin panel (login required) |
 | `js/site-config.js` | **Business details** — phones, WhatsApp, address, founders, subjects, cities |
 | `js/firebase-config.js` | **Firebase keys + Apps Script URL** |
 | `js/db.js` | Data layer (Firestore, or browser-only demo mode) |
-| `js/site.js` | Website booking form + WhatsApp draft |
+| `js/common.js` | Shared website code: header, menu, scroll effects, contact details |
+| `js/site.js` | Home page: booking form + WhatsApp draft, tutors, banners |
+| `js/contact.js` | Contact page: map + reviews |
+| `js/cloudinary.js` | Cloudinary uploads (admin) and fast resized image links (website) |
 | `js/admin/*.js` | Admin screens: dashboard, bookings, tutors, students, fees, receipts, reports |
 | `css/` | Styles (white · logo blue #0A2A66 · logo green #0B7A62) |
 | `assets/logo.png`, `logo-192.png`, `favicon.png` | Challenge Future Academy logo |
@@ -54,13 +59,35 @@ ES modules need a web server; opening the file directly from disk will not work.
 Follow the steps at the top of `apps-script/Code.gs`, then paste the web app URL into `APPS_SCRIPT_URL` in `js/firebase-config.js`.
 
 ### 3. Business details
-Edit `js/site-config.js`: office **address** (currently `[OFFICE ADDRESS]`), Google Maps link, email, Instagram/Facebook.
+Edit `js/site-config.js`: office **address** (currently `[OFFICE ADDRESS]`), email, Instagram/Facebook. The Google Maps link and map pin (`mapUrl`, `mapLat`, `mapLng`) are already set to the office location.
 
 ### Programme cards (photos)
 The 6 cards under “Our services” are listed in `PROGRAMS` at the bottom of `js/site-config.js`. To add a photo, paste its URL into that card's `image: ""` (any size — the full photo is shown, never cropped). Cards without a photo show a branded icon.
 
 ### “Find a tutor for anything” table
 Tabs, groups and items are in `CATEGORIES` at the bottom of `js/site-config.js` (Online Classes, Tuition, Languages, IT Courses, Exam Coaching). Clicking an item pre-fills the booking form. Please confirm the IT courses and exams listed there with the academy.
+
+### Cloudinary (banner + tutor photo uploads)
+Admin → **Website Banners** and **Website Tutors** upload photos to your free Cloudinary account (cloud name `u3hhrbtz`). Until the preset below is filled in, photos are compressed and saved in Firestore instead, so everything still works.
+
+1. Sign in at https://console.cloudinary.com.
+2. **Settings (gear icon) → Upload → Upload presets → Add upload preset.**
+3. Fill in:
+   - **Upload preset name**: `cfa_admin_unsigned` (any name).
+   - **Signing mode**: **Unsigned** (needed because the admin panel uploads straight from the browser — never put the API *secret* in website code).
+   - **Asset folder**: `cf-academy`.
+   - **Use filename / Unique filename**: Unique filename on, Overwrite off.
+4. Under **Upload Control / Restrictions** (to stop misuse of the preset):
+   - **Allowed formats**: `jpg, jpeg, png, webp`.
+   - **Max file size**: `5000000` (5 MB). Max image width/height: `4000`.
+5. Under **Transformations → Incoming transformation**: `c_limit,w_2000,h_2000` (keeps originals a sensible size). Click **Save**.
+6. Open `js/firebase-config.js` and set `uploadPreset: "cfa_admin_unsigned"` inside `CLOUDINARY` (cloudName is already `u3hhrbtz`).
+7. Upload again from Admin → Website Banners / Website Tutors. The page now says “Photos are uploaded to Cloudinary”.
+
+Notes
+- The website asks Cloudinary for the right size and the best format automatically (`f_auto,q_auto,w_…`), so a 3 MB PNG becomes a ~40 KB WebP/AVIF on phones. The programme card photos in `site-config.js` use the same trick.
+- Deleting a slide or tutor in the admin panel removes it from the website; the file stays in Cloudinary → Media Library (delete it there if you want).
+- Free plan: 25 credits/month — far more than this site needs.
 
 ### 4. Import the 850 tutors
 Admin → **Tutors → Excel template** → fill (or use the academy's own sheet — common headings like *Tutor Name, Phone No, Location* are recognised) → **Import Excel**. The preview shows new vs updated tutors and any bad rows before saving. Re-importing updates tutors with the same mobile number instead of duplicating.
@@ -69,6 +96,10 @@ Admin → **Tutors → Excel template** → fill (or use the academy's own sheet
 GitHub Pages: push this folder to a repo → Settings → Pages → `main` / root. Custom domain: add a `CNAME` file with the domain and point the DNS (CNAME `www` → `<user>.github.io`, plus the 4 GitHub A records), then enable HTTPS.
 
 ## How it stays fast and free
+- The public pages do **not** load the Firebase SDK (~300 KB). They talk to Firestore through its small REST API — same security rules.
+- Banners and tutor cards are cached in the browser and refreshed in the background, so repeat visits show them instantly.
+- Photos come from Cloudinary already resized for the screen; images below the screen load only when scrolled to.
+- Animations use only `transform`/`opacity` (GPU friendly) and switch off for visitors who prefer reduced motion.
 - Parents never load the tutor list — the public site only **creates** a booking (1 write).
 - Admins load the 850 tutors once per session (~850 reads); with 2 admins that is well inside the free 50,000 reads/day.
 - Bookings, students and payments use live listeners, so both admins see changes instantly without refreshing.
@@ -89,6 +120,8 @@ GitHub Pages: push this folder to a repo → Settings → Pages → `main` / roo
 Deactivating a staff login in Staff Config blocks it immediately (Firestore rules check the `staff` record). To remove the login completely, delete the user in Firebase console → Authentication.
 
 ## Admin features
+- **Website Tutors** (Owner/Admin) — the 10 “Meet our tutors” cards on the home page: photo (cropped square), name, experience and subject; reorder, hide, edit, delete. The section hides itself when there are no cards.
+- **Parent Reviews** — parents write reviews on the Contact page (star rating, name, area, text). Each review waits here until someone taps **Approve & show**; “Remove from website” hides it again; Owner/Admin can delete.
 - **Staff Config** — create staff logins (email + password, or Generate), choose Staff/Admin, share credentials (copy / WhatsApp), edit, deactivate/activate, send password-reset email. Everyone can use "Change my password".
 - **Website Banners** (Owner/Admin) — up to 6 slides at 1756 × 450 px, auto-cropped and compressed in the browser, saved in Firestore (no paid Storage plan needed); reorder, hide/show, link to the booking form or any URL. They play as an auto slider above “Our services” on the website and the section hides itself when there are no slides.
 - **Student Allocation** — students waiting for a tutor; best-matched tutors by subject, class, area/city or online, with each tutor's current number of students; allocate or change tutor; WhatsApp the tutor (student + parent details) and the parent (tutor details); allocation history; "By tutor" view; Excel export.

@@ -1,6 +1,7 @@
 // Banners — up to 6 ad slides (1756 × 450) shown on the website above "Our services"
 import { put, remove, watch } from "../db.js";
 import { $, $$, esc, toast, confirmBox, modal, ICONS } from "./ui.js";
+import { cloudinaryReady, uploadImage, canvasBlob, cld } from "../cloudinary.js";
 
 const W = 1756, H = 450, MAX = 6;
 const MAX_CHARS = 750000; // keeps each banner well under Firestore's 1 MB document limit
@@ -11,7 +12,8 @@ function render(view, c) {
   root = view; ctx = c;
   view.innerHTML = `
     <div class="page-head">
-      <div><h1>Website banners</h1><p>Up to ${MAX} slides, ${W} × ${H} px. They play as a slider on the website, just above “Our services”.</p></div>
+      <div><h1>Website banners</h1><p>Up to ${MAX} slides, ${W} × ${H} px. They play as a slider on the website, just above “Our services”.</p>
+        <p class="sub" style="margin-top:4px">${cloudinaryReady ? "Photos are uploaded to Cloudinary." : "Cloudinary is not set up yet — photos are compressed and saved in Firestore. See README → Cloudinary."}</p></div>
       <div class="actions"><a class="btn btn-ghost" href="index.html#banners" target="_blank" rel="noopener">View on website</a></div>
     </div>
     <div style="display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:20px;align-items:start" class="bn-grid">
@@ -125,13 +127,20 @@ async function save(e) {
     link = $("#bnUrl", root).value.trim();
     if (!/^https?:\/\//i.test(link)) { toast("Enter a full link starting with https://", "bad"); return; }
   }
-  const image = encode();
-  if (!image) { toast("Image is too detailed to store — try a simpler or smaller image", "bad"); return; }
   const btn = $("#bnSave", root);
   btn.disabled = true; btn.textContent = "Uploading…";
   try {
+    let image, sizeKB, publicId = "";
+    if (cloudinaryReady) {
+      const up = await uploadImage(await canvasBlob($("#bnCanvas", root), 0.9), "banners");
+      image = up.url; publicId = up.publicId; sizeKB = Math.round((up.bytes || 0) / 1024);
+    } else {
+      image = encode();
+      if (!image) throw new Error("Image is too detailed to store — try a simpler or smaller image");
+      sizeKB = Math.round(image.length * 0.75 / 1024);
+    }
     const order = rows.length ? Math.max(...rows.map((r) => r.order || 0)) + 1 : 1;
-    await put("banners", { title, link, active: $("#bnActive", root).checked, order, image, width: W, height: H, sizeKB: Math.round(image.length * 0.75 / 1024), uploadedBy: ctx.user.email });
+    await put("banners", { title, link, active: $("#bnActive", root).checked, order, image, publicId, width: W, height: H, sizeKB, uploadedBy: ctx.user.email });
     toast("Slide uploaded", "ok");
     resetForm();
   } catch (ex) {
@@ -166,7 +175,7 @@ function renderList() {
   if (rows.length >= MAX) $("#bnSave", root).disabled = true;
   box.innerHTML = rows.length ? rows.map((r, i) => `
     <div class="bn-item ${r.active === false ? "off" : ""}">
-      <img src="${esc(r.image)}" alt="${esc(r.title)}" loading="lazy">
+      <img src="${esc(cld(r.image, 480))}" alt="${esc(r.title)}" loading="lazy">
       <div class="bn-meta">
         <div><b>${i + 1}. ${esc(r.title)}</b>
           <span class="sub">${r.link ? "Opens: " + esc(r.link === "#book" ? "Book a tutor form" : r.link) : "No link"} · ${esc(r.sizeKB || "")} KB</span></div>
@@ -195,7 +204,7 @@ async function onListClick(e) {
       await Promise.all([put("banners", { id: r.id, order: ob === oa ? j + 1 : ob }), put("banners", { id: other.id, order: ob === oa ? i + 1 : oa })]);
     }
     if (b.dataset.act === "del") {
-      if (!(await confirmBox("Delete slide?", `Delete “${esc(r.title)}”? It disappears from the website immediately.`, "Delete"))) return;
+      if (!(await confirmBox("Delete slide?", `Delete “${esc(r.title)}”? It disappears from the website immediately.${r.publicId ? " (The photo stays in your Cloudinary Media Library; delete it there if you no longer need it.)" : ""}`, "Delete"))) return;
       await remove("banners", r.id);
       toast("Slide deleted");
     }
@@ -207,7 +216,7 @@ function editSlide(r) {
   const isCustom = r.link && r.link !== "#book";
   modal({
     title: "Edit slide",
-    body: `<img src="${esc(r.image)}" alt="" style="width:100%;border-radius:8px;aspect-ratio:${W}/${H};object-fit:cover;margin-bottom:12px">
+    body: `<img src="${esc(cld(r.image, 900))}" alt="" style="width:100%;border-radius:8px;aspect-ratio:${W}/${H};object-fit:cover;margin-bottom:12px">
       <div class="form-grid" style="grid-template-columns:1fr" id="beForm">
         <div class="fld"><label>Short description</label><input name="title" maxlength="120" value="${esc(r.title)}"></div>
         <div class="fld"><label>When clicked, go to</label><select name="linkType"><option value="#book" ${r.link === "#book" ? "selected" : ""}>Book a tutor form</option><option value="" ${!r.link ? "selected" : ""}>Nothing (image only)</option><option value="custom" ${isCustom ? "selected" : ""}>Another link…</option></select></div>

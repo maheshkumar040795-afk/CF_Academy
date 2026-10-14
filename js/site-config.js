@@ -18,7 +18,9 @@ export const SITE = {
   whatsapp: "918190870673",
   email: "",                         // e.g. info@cfacademy.in
   address: "[OFFICE ADDRESS], Chennai, Tamil Nadu",   // TODO: same as old office
-  mapUrl: "",                        // Google Maps share link
+  mapUrl: "https://maps.app.goo.gl/Ae5GPFYDPdFMSE5u8",   // Google Maps share link ("Get directions")
+  mapLat: 13.1291944,                // map pin shown on the Contact page
+  mapLng: 80.1291944,
   coverage: "All over Chennai & Tamil Nadu",
   instagram: "",
   facebook: ""
