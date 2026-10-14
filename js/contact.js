@@ -1,7 +1,7 @@
 // CF Academy — Contact page: office map + parent reviews (read & write)
-import { SITE } from "./site-config.js?v=202610142100";
-import { listReviews, createReview } from "./db.js?v=202610142100";
-import { $, $$, escAttr, toast, reveal, idle } from "./common.js?v=202610142100";
+import { SITE } from "./site-config.js?v=202610142200";
+import { listReviews, createReview } from "./db.js?v=202610142200";
+import { $, $$, escAttr, toast, reveal, idle } from "./common.js?v=202610142200";
 
 // ── Map: Google Maps embed (no API key needed), loaded only when it nears the screen ──
 function initMap() {
