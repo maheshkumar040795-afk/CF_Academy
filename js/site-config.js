@@ -17,7 +17,7 @@ export const SITE = {
   // WhatsApp number that receives booking drafts (country code + number)
   whatsapp: "918190870673",
   email: "",                         // e.g. info@cfacademy.in
-  address: "[OFFICE ADDRESS], Chennai, Tamil Nadu",   // TODO: same as old office
+  address: "4th Street, Santhipuram, Thirumullaivoyal, Chennai, Tamil Nadu",
   mapUrl: "https://maps.app.goo.gl/Ae5GPFYDPdFMSE5u8",   // Google Maps share link ("Get directions")
   mapLat: 13.1291944,                // map pin shown on the Contact page
   mapLng: 80.1291944,

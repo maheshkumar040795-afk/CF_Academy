@@ -22,9 +22,11 @@ function render(view, c) {
         <div class="note" id="bnLimit" hidden style="margin-bottom:12px"></div>
         <label class="bn-drop" id="bnDrop" for="bnFile">
           <input type="file" id="bnFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <span id="bnDropText"><b>Choose an image</b><br><span class="sub" style="display:inline">JPG, PNG or WebP · best at ${W} × ${H} px (other sizes are cropped to fit)</span></span>
+          <span id="bnDropText"><b>Choose an image</b><br><span class="sub" style="display:inline">JPG, PNG or WebP · best at ${W} × ${H} px (other sizes: show the full picture or crop to fill)</span></span>
           <canvas id="bnCanvas" width="${W}" height="${H}" hidden></canvas>
         </label>
+        <div class="fld" id="bnFitWrap" hidden style="margin-top:10px"><label>This image is not ${W} × ${H}. How should it fit?</label>
+          <div class="seg" role="group" aria-label="Fit"><button type="button" data-fit="full" aria-pressed="true">Show full picture</button><button type="button" data-fit="crop" aria-pressed="false">Crop to fill</button></div></div>
         <div class="fld" id="bnPosWrap" hidden style="margin-top:10px"><label for="bnPos" id="bnPosLbl">Crop position</label><input id="bnPos" type="range" min="0" max="100" value="50"></div>
         <p class="sub" id="bnInfo" style="margin:8px 0 0"></p>
         <div class="form-grid" style="grid-template-columns:1fr;margin-top:12px">
@@ -48,6 +50,7 @@ function render(view, c) {
 
   $("#bnFile", view).addEventListener("change", (e) => e.target.files[0] && loadFile(e.target.files[0]));
   $("#bnPos", view).addEventListener("input", draw);
+  $$("[data-fit]", view).forEach((b) => b.addEventListener("click", () => setFit(b.dataset.fit)));
   $("#bnLink", view).addEventListener("change", (e) => { $("#bnUrlWrap", view).hidden = e.target.value !== "custom"; });
   $("#bnForm", view).addEventListener("submit", save);
   $("#bnList", view).addEventListener("click", onListClick);
@@ -73,14 +76,18 @@ function loadFile(file) {
     const ratio = img.naturalWidth / img.naturalHeight;
     const target = W / H;
     const posWrap = $("#bnPosWrap", root);
-    posWrap.hidden = Math.abs(ratio - target) < 0.02;
+    const odd = Math.abs(ratio - target) >= 0.02;
+    $("#bnFitWrap", root).hidden = !odd;
+    fit = "full";
+    $$("[data-fit]", root).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === fit)));
+    posWrap.hidden = true;
     $("#bnPosLbl", root).textContent = ratio > target ? "Crop position (left ↔ right)" : "Crop position (top ↕ bottom)";
     $("#bnPos", root).value = 50;
     $("#bnCanvas", root).hidden = false;
     $("#bnDropText", root).hidden = true;
     const exact = img.naturalWidth === W && img.naturalHeight === H;
     $("#bnInfo", root).innerHTML = `${esc(file.name)} · ${img.naturalWidth} × ${img.naturalHeight} px` +
-      (exact ? " · perfect size" : img.naturalWidth < W * 0.7 ? ` · <span style="color:var(--err)">small image — it may look blurry on large screens</span>` : posWrap.hidden ? " · resized to fit" : " · cropped to fit (drag the slider to adjust)");
+      (exact ? " · perfect size" : img.naturalWidth < W * 0.7 ? ` · <span style="color:var(--err)">small image — it may look blurry on large screens</span>` :  !odd ? " · resized to fit" : " · whole picture shown — or choose Crop to fill");
     if (!$("#bnTitle", root).value) $("#bnTitle", root).value = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 120);
     $("#bnSave", root).disabled = rows.length >= MAX;
     draw();
@@ -90,12 +97,30 @@ function loadFile(file) {
   img.src = url;
 }
 
-// Cover-crop the image into the 1756 × 450 canvas
+// "full": the whole picture, centred, with a soft blurred copy filling the sides (nothing cut off)
+// "crop": cover-crop into the 1756 × 450 canvas (slider picks the part to keep)
+let fit = "full";
+function setFit(f) {
+  fit = f;
+  $$("[data-fit]", root).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === f)));
+  $("#bnPosWrap", root).hidden = f !== "crop";
+  draw();
+}
 function draw() {
   if (!pending) return;
   const cv = $("#bnCanvas", root);
   const c2 = cv.getContext("2d");
   const { img, w, h } = pending;
+  if (fit === "full" && !$("#bnFitWrap", root).hidden) {
+    const big = Math.max(W / w, H / h) * 1.15;
+    c2.filter = "blur(28px) brightness(0.92)";
+    c2.drawImage(img, (W - w * big) / 2, (H - h * big) / 2, w * big, h * big);
+    c2.filter = "none";
+    const s2 = Math.min(W / w, H / h);
+    c2.imageSmoothingQuality = "high";
+    c2.drawImage(img, (W - w * s2) / 2, (H - h * s2) / 2, w * s2, h * s2);
+    return;
+  }
   const scale = Math.max(W / w, H / h);
   const sw = W / scale, sh = H / scale;
   const pos = Number($("#bnPos", root).value) / 100;
@@ -157,6 +182,7 @@ function resetForm() {
   $("#bnCanvas", root).hidden = true;
   $("#bnDropText", root).hidden = false;
   $("#bnPosWrap", root).hidden = true;
+  $("#bnFitWrap", root).hidden = true;
   $("#bnUrlWrap", root).hidden = true;
   $("#bnInfo", root).textContent = "";
   $("#bnSave", root).disabled = true;
