@@ -1,8 +1,8 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610142200";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610142200";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610142200";
-import { cld } from "./cloudinary.js?v=202610142200";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610142300";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610142300";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610142300";
+import { cld } from "./cloudinary.js?v=202610142300";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -332,12 +332,12 @@ function buildBanners(list) {
     const safeLink = b.link === "#book" || /^https?:\/\//i.test(b.link || "") ? b.link : "";
     const ext = /^https?:/i.test(safeLink);
     const set = /res\.cloudinary\.com/.test(b.image) ? ` srcset="${escAttr(cld(b.image, 880))} 880w, ${escAttr(cld(b.image, 1400))} 1400w, ${escAttr(cld(b.image, 1756))} 1756w, ${escAttr(cld(b.image, 2083))} 2083w" sizes="(max-width: 1240px) 100vw, 1160px"` : "";
-    const img = `<img src="${escAttr(cld(b.image, 2083))}"${set} alt="${escAttr(b.title)}" width="${Number(b.width) || 2083}" height="${Number(b.height) || 755}" ${i ? 'loading="lazy"' : ""} decoding="async" draggable="false">`;
+    const img = `<img src="${escAttr(cld(b.image, 2083))}"${set} alt="${escAttr(b.title)}" width="${Number(b.width) || 1756}" height="${Number(b.height) || 450}" ${i ? 'loading="lazy"' : ""} decoding="async" draggable="false">`;
     return `<div class="slide" role="group" aria-roledescription="slide" aria-label="${i + 1} of ${list.length}">${safeLink ? `<a href="${escAttr(safeLink)}" ${ext ? 'target="_blank" rel="noopener"' : ""}>${img}</a>` : img}</div>`;
   }).join("");
   // Each slide is shown at its own uploaded shape (no white borders, no cropping):
   // the banner box takes the shape of the slide that is showing.
-  const ratios = list.map((b) => `${Number(b.width) || 2083} / ${Number(b.height) || 755}`);
+  const ratios = list.map((b) => `${Number(b.width) || 1756} / ${Number(b.height) || 450}`);
   slider.style.aspectRatio = ratios[0];
   dots.innerHTML = list.map((b, i) => `<button type="button" aria-label="Show slide ${i + 1}"></button>`).join("");
   section.hidden = false;

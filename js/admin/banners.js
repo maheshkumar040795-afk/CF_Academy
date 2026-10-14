@@ -1,9 +1,9 @@
-// Banners — up to 6 ad slides (2083 × 755) shown on the website above "Our services"
+// Banners — up to 6 ad slides (1756 × 450) shown on the website above "Our services"
 import { put, remove, watch } from "../db.js";
 import { $, $$, esc, toast, confirmBox, modal, ICONS } from "./ui.js";
 import { cloudinaryReady, uploadImage, canvasBlob, cld } from "../cloudinary.js";
 
-const W = 2083, H = 755, MAX = 6;
+const W = 1756, H = 450, MAX = 6;
 const MAX_CHARS = 750000; // keeps each banner well under Firestore's 1 MB document limit
 let root, ctx, unsub = null, rows = [], loaded = false;
 let pending = null; // { img, name, w, h }
@@ -22,7 +22,7 @@ function render(view, c) {
         <div class="note" id="bnLimit" hidden style="margin-bottom:12px"></div>
         <label class="bn-drop" id="bnDrop" for="bnFile">
           <input type="file" id="bnFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <span id="bnDropText"><b>Choose an image</b><br><span class="sub" style="display:inline">JPG, PNG or WebP · best at ${W} × ${H} px (other sizes: show the full picture or crop to fill)</span></span>
+          <span id="bnDropText"><b>Choose an image</b><br><span class="sub" style="display:inline">Recommended size: <b>${W} × ${H} px</b> · JPG, PNG or WebP<br>Other sizes are shown at their actual size, or you can fit or crop them</span></span>
           <canvas id="bnCanvas" width="${W}" height="${H}" hidden></canvas>
         </label>
         <div class="fld" id="bnFitWrap" hidden style="margin-top:10px"><label>This image is not ${W} × ${H}. How should it fit?</label>
@@ -98,7 +98,7 @@ function loadFile(file) {
 }
 
 // "full": the whole picture, centred, with a soft blurred copy filling the sides (nothing cut off)
-// "crop": cover-crop into the 2083 × 755 canvas (slider picks the part to keep)
+// "crop": cover-crop into the 1756 × 450 canvas (slider picks the part to keep)
 let fit = "actual";
 function setFit(f) {
   fit = f;
@@ -111,9 +111,9 @@ function draw() {
   const cv = $("#bnCanvas", root);
   const c2 = cv.getContext("2d");
   const { img, w, h } = pending;
-  // "actual": keep the uploaded picture's own shape — no crop, no blur (max 2083 px wide)
+  // "actual": keep the uploaded picture's own shape — no crop, no blur (max 2400 px wide)
   const odd = !$("#bnFitWrap", root).hidden;
-  const outW = odd && fit === "actual" ? Math.min(w, W) : W;
+  const outW = odd && fit === "actual" ? Math.min(w, 2400) : W;
   const outH = odd && fit === "actual" ? Math.round(outW * h / w) : H;
   if (cv.width !== outW || cv.height !== outH) { cv.width = outW; cv.height = outH; }
   pending.outW = outW; pending.outH = outH;
