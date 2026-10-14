@@ -1,122 +1,134 @@
-// Shared business logic: booking status, tutor matching, fee status
-import { esc } from "./ui.js";
+// CF Academy — shared website code (home, about, contact):
+// header + mobile menu, scroll progress, reveal-on-scroll, count-up numbers,
+// contact details from site-config, toast. Page scripts import the helpers.
+import { SITE } from "./site-config.js?v=202610141500";
 
-const OVERDUE_MS = 2 * 3600e3; // a New booking not called within 2 hours
+export const $ = (s, r = document) => r.querySelector(s);
+export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-export function isOverdue(b) {
-  return b.status === "New" && !b.claimedBy && Date.now() - (b.createdAt || 0) > OVERDUE_MS;
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+export const escAttr = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ESC[c]);
+
+export const reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+export function idle(fn) {
+  if ("requestIdleCallback" in window) requestIdleCallback(fn, { timeout: 1500 });
+  else setTimeout(fn, 200);
 }
 
-export function statusPill(b) {
-  if (isOverdue(b)) {
-    const h = Math.floor((Date.now() - b.createdAt) / 3600e3);
-    return `<span class="pill p-late">Overdue · ${h}h</span>`;
+let toastTimer = null;
+export function toast(msg) {
+  let t = $("#toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 3600);
+}
+
+// Fade/slide elements in as they reach the screen. Children of [data-stagger] get a small delay each.
+let io = null;
+export function reveal(els) {
+  const list = (els || []).filter((el) => el && !el.dataset.rv);
+  list.forEach((el) => {
+    el.dataset.rv = "1";
+    const parent = el.parentElement;
+    if (parent && parent.hasAttribute("data-stagger") && !el.style.getPropertyValue("--d")) {
+      const i = [...parent.children].filter((c) => c.classList.contains("reveal")).indexOf(el);
+      el.style.setProperty("--d", Math.min(i, 8) * 80 + "ms");
+    }
+  });
+  if (reduceMotion || !("IntersectionObserver" in window)) { list.forEach((el) => el.classList.add("in")); return; }
+  if (!io) {
+    io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    }), { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
   }
-  const cls = {
-    "New": "p-new", "Called": "p-called", "Tutor assigned": "p-assigned",
-    "Demo fixed": "p-demo", "Converted": "p-won", "Not interested": "p-lost"
-  }[b.status] || "p-new";
-  return `<span class="pill ${cls}">${esc(b.status || "New")}</span>`;
+  list.forEach((el) => io.observe(el));
 }
 
-// ── Subject normalisation so "Maths" matches "Mathematics" etc. ──
-const SUBJECT_RULES = [
-  ["mathematics", /\bmath|\bmaths|\bmathematics|\bbusiness math/],
-  ["science", /\bscience\b|\bevs\b|\bgeneral science/],
-  ["physics", /\bphy/],
-  ["chemistry", /\bchem/],
-  ["biology", /\bbio|\bbotany|\bzoology/],
-  ["english", /\beng/],
-  ["tamil", /\btamil/],
-  ["hindi", /\bhindi/],
-  ["social science", /\bsocial|\bhistory|\bgeography|\bcivics|\bsst\b/],
-  ["accountancy", /\baccount/],
-  ["commerce", /\bcommerce|\bbusiness stud/],
-  ["economics", /\beco/],
-  ["computer science", /\bcomputer|\bcs\b|\bpython|\bjava\b|\bcoding/],
-  ["french", /\bfrench/],
-  ["sanskrit", /\bsanskrit/]
-];
-export function canonSubjects(str) {
-  const s = String(str || "").toLowerCase();
-  const out = new Set();
-  SUBJECT_RULES.forEach(([name, re]) => { if (re.test(s)) out.add(name); });
-  if (/\ball subjects?\b/.test(s)) out.add("all");
-  return out;
+// Count-up numbers: <b data-count="850" data-suffix="+" data-from="0">
+function countUp(el) {
+  const to = Number(el.dataset.count);
+  const from = Number(el.dataset.from || 0);
+  const suffix = el.dataset.suffix || "";
+  if (!isFinite(to) || reduceMotion) return;
+  const t0 = performance.now(), dur = 1300;
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * eased) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  };
+  el.textContent = from + suffix;
+  requestAnimationFrame(step);
+}
+function initCounts() {
+  const els = $$("[data-count]");
+  if (!els.length || reduceMotion || !("IntersectionObserver" in window)) return;
+  const obs = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { countUp(e.target); obs.unobserve(e.target); }
+  }), { threshold: 0.5 });
+  els.forEach((el) => obs.observe(el));
 }
 
-function classNum(c) {
-  const s = String(c || "").toLowerCase();
-  if (/lkg|ukg|pre.?kg|nursery/.test(s)) return 0;
-  const m = s.match(/\d{1,2}/);
-  return m ? Number(m[0]) : null;
-}
-function classRangeOk(tutorClasses, studentClass) {
-  const n = classNum(studentClass);
-  if (n == null || !tutorClasses) return null;
-  const s = String(tutorClasses).toLowerCase();
-  if (/all/.test(s)) return true;
-  const nums = (s.match(/\d{1,2}/g) || []).map(Number);
-  const hasKG = /lkg|ukg|kg/.test(s);
-  if (!nums.length) return hasKG ? n === 0 : null;
-  const lo = hasKG ? 0 : Math.min(...nums);
-  const hi = Math.max(...nums);
-  return n >= lo && n <= hi;
-}
-const words = (s) => String(s || "").toLowerCase().split(/[,/;|]+|\s+/).map((w) => w.trim()).filter((w) => w.length >= 3);
-
-// Rank tutors for a booking. Returns [{t, score, hits:{subject, area, city, mode, cls}}]
-export function matchTutors(b, tutors, limit = 8) {
-  const want = canonSubjects(b.subjects);
-  const online = /online/i.test(b.mode || "");
-  const bArea = String(b.area || "").toLowerCase().trim();
-  const bAreaWords = words(b.area);
-  const bCity = String(b.city || "").toLowerCase().replace(/\(.*\)/, "").trim();
-  const out = [];
-  for (const t of tutors || []) {
-    if ((t.status || "Active") === "Inactive") continue;
-    const have = canonSubjects(t.subjects);
-    let subjHits = 0;
-    if (want.has("all")) subjHits = have.size ? 1 : 0;
-    else want.forEach((s) => { if (have.has(s) || have.has("all")) subjHits++; });
-    if (want.size && !subjHits) continue;
-
-    const tArea = String(t.area || "").toLowerCase();
-    const tCity = String(t.city || "").toLowerCase();
-    const tMode = String(t.mode || "").toLowerCase();
-    const areaHit = !online && !!bArea && (tArea.includes(bArea) || bAreaWords.some((w) => tArea.includes(w)));
-    const cityHit = !!bCity && !!tCity && (tCity.includes(bCity) || bCity.includes(tCity));
-    const doesOnline = /online|both|all/.test(tMode);
-    const doesHome = !tMode || /home|both|all|offline/.test(tMode);
-    const modeHit = online ? doesOnline : doesHome;
-    const cls = classRangeOk(t.classes, b.studentClass);
-
-    let score = subjHits * 10;
-    if (online) { score += doesOnline ? 8 : -6; if (cityHit) score += 1; }
-    else { if (areaHit) score += 9; if (cityHit) score += 4; if (!doesHome) score -= 8; }
-    if (cls === true) score += 3;
-    if (cls === false) score -= 4;
-    score += Math.min(Number(t.experience) || 0, 15) / 5;
-    out.push({ t, score, hits: { subject: subjHits > 0, area: areaHit, city: cityHit, mode: modeHit, cls } });
-  }
-  return out.sort((a, b2) => b2.score - a.score).slice(0, limit);
+// Header shadow, scroll progress bar
+function initScroll() {
+  const header = $("#siteHeader");
+  const bar = $("#progress");
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    const y = window.scrollY;
+    if (header) header.classList.toggle("scrolled", y > 8);
+    if (bar) {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
+    }
+  };
+  window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  update();
 }
 
-// Fee status of a student for a month key (YYYY-MM)
-export function feeFor(student, payments, mk) {
-  const fee = Number(student.monthlyFee) || 0;
-  const paid = payments
-    .filter((p) => p.studentId === student.id && (p.monthKeys || [p.monthKey]).includes(mk))
-    .reduce((sum, p) => sum + (Number(p.amount) || 0) / Math.max(1, (p.monthKeys || [p.monthKey]).length), 0);
-  const balance = Math.max(0, Math.round(fee - paid));
-  let status = "Due";
-  if (fee && paid >= fee - 0.5) status = "Paid";
-  else if (paid > 0) status = "Partial";
-  if (!fee) status = paid ? "Paid" : "No fee set";
-  return { fee, paid: Math.round(paid), balance, status };
+// Mobile menu
+function initMenu() {
+  const btn = $(".menu-btn");
+  const nav = $("#nav");
+  if (!btn || !nav) return;
+  const set = (open) => { nav.classList.toggle("open", open); btn.setAttribute("aria-expanded", String(open)); btn.setAttribute("aria-label", open ? "Close menu" : "Open menu"); };
+  btn.addEventListener("click", () => set(!nav.classList.contains("open")));
+  nav.addEventListener("click", (e) => { if (e.target.closest("a")) set(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && nav.classList.contains("open")) { set(false); btn.focus(); } });
+  document.addEventListener("click", (e) => { if (nav.classList.contains("open") && !e.target.closest("#nav, .menu-btn")) set(false); });
 }
 
-export function feePill(st) {
-  const cls = { Paid: "p-paid", Partial: "p-partial", Due: "p-due", Overdue: "p-late" }[st] || "p-lost";
-  return `<span class="pill ${cls}">${esc(st)}</span>`;
+// Phone numbers, WhatsApp, address and map link from site-config.js
+const fmtTel = (p) => String(p).replace(/^(\d{5})(\d{5})$/, "$1 $2");
+function initContact() {
+  const [p1, p2] = SITE.phones || [];
+  $$("[data-site]").forEach((el) => {
+    const k = el.dataset.site;
+    if ((k === "tel1" || k === "tel2") && (k === "tel1" ? p1 : p2)) {
+      const p = k === "tel1" ? p1 : p2;
+      el.href = "tel:+91" + p;
+      // replace a plain number shown as the link text (keeps "Call …" style labels)
+      if (/^\s*(call\s+)?[\d\s]{10,12}\s*$/i.test(el.textContent)) el.textContent = el.textContent.replace(/[\d\s]{10,12}\s*$/, fmtTel(p));
+    }
+    if (k === "wa" && SITE.whatsapp) el.href = "https://wa.me/" + SITE.whatsapp;
+    if (k === "wa-float" && SITE.whatsapp) el.href = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hello CF Academy, I need a tutor for my child.")}`;
+    if (k === "address" && SITE.address) el.textContent = SITE.address;
+    if (k === "map" && SITE.mapUrl) { el.href = SITE.mapUrl; el.hidden = false; }
+  });
+  const y = $("#year");
+  if (y) y.textContent = new Date().getFullYear();
 }
+
+function init() {
+  initMenu();
+  initScroll();
+  initContact();
+  reveal($$(".reveal"));
+  initCounts();
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+else init();

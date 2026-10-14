@@ -1,8 +1,8 @@
 // Students — converted bookings with tutor, schedule and monthly fee
 import { put, remove } from "../db.js";
-import { CLASSES, BOARDS, CITIES } from "../site-config.js";
+import { SITE, CLASSES, BOARDS, CITIES } from "../site-config.js";
 import { $, $$, esc, fmtPhone, fmtDate, normPhone, inr, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, ICONS } from "./ui.js";
-import { feeFor, feePill } from "./common.js";
+import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay } from "./common.js";
 
 const st = { q: "", status: "Active", tutor: "", fee: "" };
 let root, ctx, openedParam = null;
@@ -14,7 +14,12 @@ function rows() {
     if (st.status && (s.status || "Active") !== st.status) return false;
     if (st.tutor === "none" && s.tutorId) return false;
     if (q && ![s.name, s.parentName, s.phone, s.subjects, s.tutorName, s.area].join(" ").toLowerCase().includes(q)) return false;
-    if (st.fee) { const f = feeFor(s, ctx.payments, mk); if (f.status !== st.fee) return false; }
+    if (st.fee) {
+      const d = feeDue(s, ctx.payments);
+      const ok = { "Paid": d.kind === "paid", "Due in 3 days": d.kind === "soon" || d.kind === "today", "Overdue": d.kind === "late",
+        "Not due yet": d.kind === "upcoming", "Partly paid": d.status === "Partial" }[st.fee];
+      if (!ok) return false;
+    }
     return true;
   });
 }
@@ -34,7 +39,7 @@ function render(view, c, params) {
       <div class="fld grow"><label for="sQ">Search</label><input id="sQ" placeholder="Student, parent, mobile, tutor" value="${esc(st.q)}"></div>
       <div class="fld"><label for="sStatus">Status</label><select id="sStatus">${options(["Active", "Inactive"], st.status, "All")}</select></div>
       <div class="fld"><label for="sTutor">Tutor</label><select id="sTutor"><option value="">Any</option><option value="none" ${st.tutor === "none" ? "selected" : ""}>Not assigned</option></select></div>
-      <div class="fld"><label for="sFee">${esc(monthLabel(monthKey()))} fee</label><select id="sFee">${options(["Paid", "Partial", "Due"], st.fee, "All")}</select></div>
+      <div class="fld"><label for="sFee">${esc(monthLabel(monthKey()))} fee</label><select id="sFee">${options(["Paid", "Due in 3 days", "Overdue", "Not due yet", "Partly paid"], st.fee, "All")}</select></div>
     </div>
     <div id="sList"></div>`;
   $("#sQ", view).addEventListener("input", debounce((e) => { st.q = e.target.value.trim(); renderList(); }, 200));
@@ -48,8 +53,10 @@ function render(view, c, params) {
     const s = ctx.students.find((x) => x.id === b.dataset.id); if (!s) return;
     if (b.dataset.act === "view") viewStudent(s);
     if (b.dataset.act === "edit") editStudent(s);
+    if (b.dataset.act === "fees") feeCard(s);
   });
   renderList();
+  if (params && params.fee) { st.fee = params.fee; $("#sFee", view).value = st.fee; renderList(); }
   if (params && params.id && openedParam !== params.id) {
     openedParam = params.id;
     const s = ctx.students.find((x) => x.id === params.id);
@@ -64,12 +71,17 @@ function renderStats() {
   const mk = monthKey();
   const joined = ctx.students.filter((s) => (s.joinDate || "").slice(0, 7) === mk).length;
   const noTutor = act.filter((s) => !s.tutorId).length;
+  const dues = act.map((s) => feeDue(s, ctx.payments));
+  const soon = dues.filter((d) => d.kind === "soon" || d.kind === "today").length;
+  const late = dues.filter((d) => d.kind === "late").length;
   $("#sStats", root).innerHTML = `
     <div class="stat"><span>Active students</span><b>${act.length}</b></div>
     <div class="stat"><span>Home tuition</span><b>${home}</b></div>
     <div class="stat"><span>Online tuition</span><b>${act.length - home}</b></div>
     <div class="stat"><span>Joined this month</span><b>${joined}</b></div>
-    <div class="stat ${noTutor ? "warn" : ""}"><span>Without a tutor</span><b>${noTutor}</b></div>`;
+    <div class="stat ${noTutor ? "warn" : ""}"><span>Without a tutor</span><b>${noTutor}</b></div>
+    <div class="stat ${soon ? "warn" : ""}"><span>Fee due in 3 days</span><b>${soon}</b></div>
+    <div class="stat ${late ? "bad" : ""}"><span>Fee overdue</span><b>${late}</b></div>`;
 }
 
 function renderList() {
@@ -82,17 +94,92 @@ function renderList() {
     <div class="table-wrap"><table class="t">
       <thead><tr><th>Student</th><th>Class · subjects</th><th>Tutor · type</th><th>Schedule</th><th class="num">Fee / month</th><th>${esc(monthLabel(mk).split(" ")[0])} fee</th><th></th></tr></thead>
       <tbody>${list.map((s) => {
-        const f = feeFor(s, ctx.payments, mk);
+        const d = feeDue(s, ctx.payments);
         return `<tr>
           <td><span class="strong">${esc(s.name)}</span><span class="sub">${esc(s.parentName)} · ${esc(fmtPhone(s.phone))}</span></td>
           <td>${esc(s.studentClass)}${s.board ? " · " + esc(s.board) : ""}<span class="sub">${esc(s.subjects)}</span></td>
           <td>${s.tutorName ? esc(s.tutorName) : `<a class="pill p-due" href="#/allocation?student=${esc(s.id)}" style="text-decoration:none">Allocate tutor</a>`}<span class="sub">${esc(s.mode === "Online tuition" ? "Online" : "Home")} · ${esc([s.area, s.city].filter(Boolean).join(", "))}</span></td>
           <td>${esc(s.schedule || "—")}</td>
           <td class="num">${inr(s.monthlyFee)}</td>
-          <td>${(s.status || "Active") === "Active" ? feePill(f.status) + (f.status === "Partial" ? `<span class="sub">Bal ${inr(f.balance)}</span>` : "") : '<span class="pill p-lost">Inactive</span>'}</td>
+          <td>${(s.status || "Active") === "Active" ? `<div class="fee-cell">${feeIcon(s, d)}<span>${feeDuePill(d)}${d.status === "Partial" ? `<span class="sub">Bal ${inr(d.balance)}</span>` : ""}${d.prevDue ? `<span class="sub" style="color:var(--err)">+ ${inr(d.prevDue)} last month</span>` : ""}</span></div>` : '<span class="pill p-lost">Inactive</span>'}</td>
           <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-act="view" data-id="${esc(s.id)}">View</button> <button class="btn btn-ghost btn-sm" data-act="edit" data-id="${esc(s.id)}">Edit</button></td>
         </tr>`;
       }).join("")}</tbody></table></div>` : `<div class="panel empty">${ctx.students.length ? "No students match these filters." : "No students yet. Convert a booking from Bookings / Leads, or add a student here."}</div>`;
+}
+
+const ordinal = (n) => n + ([, "st", "nd", "rd"][(n % 100 >> 3 ^ 1) && n % 10] || "th");
+
+// ₹ icon on every student row → month-wise fee card
+function feeIcon(s, d) {
+  const cls = { paid: "fin-paid", soon: "fin-soon", today: "fin-late", late: "fin-late" }[d.kind] || "";
+  return `<button class="icon-btn ${cls}" data-act="fees" data-id="${esc(s.id)}" title="${esc(d.label)} · fee details" aria-label="Fees for ${esc(s.name)}: ${esc(d.label)}">${ICONS.fees}</button>`;
+}
+
+function reminderText(s, d) {
+  const due = d.due.toLocaleDateString("en-IN", { day: "numeric", month: "long" });
+  const amt = inr(d.balance + d.prevDue).replace("₹ ", "Rs. ");
+  return d.kind === "late"
+    ? `Dear ${s.parentName || "Parent"}, ${s.name}'s tuition fee of ${amt} was due on ${due}. Kindly pay at the earliest by UPI or cash. Please ignore if already paid. Thank you — ${SITE.name}`
+    : `Dear ${s.parentName || "Parent"}, a gentle reminder from ${SITE.name}: ${s.name}'s tuition fee of ${amt} is due on ${due}. You can pay by UPI or cash. Thank you!`;
+}
+
+function feeCard(s) {
+  const now = new Date();
+  const d = feeDue(s, ctx.payments, now);
+  const j = s.joinDate ? new Date(s.joinDate + "T00:00") : null;
+  const months = [];
+  for (let i = 5; i >= -1; i--) {
+    const x = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    if (j && new Date(x.getFullYear(), x.getMonth() + 1, 0) < j) continue;
+    months.push(monthKey(x));
+  }
+  const curMk = monthKey(now);
+  const rows = months.map((mk) => {
+    const f = feeFor(s, ctx.payments, mk);
+    const due = dueDateFor(s, mk);
+    const future = mk > curMk;
+    const pill = future ? `<span class="pill p-lost">Upcoming</span>` : mk === curMk ? feeDuePill(d) : feePill(f.status === "Due" ? "Overdue" : f.status);
+    return `<tr${mk === curMk ? ' class="sel"' : ""}><td><span class="strong">${esc(monthLabel(mk))}</span></td><td>${esc(fmtDate(due))}</td><td class="num">${inr(f.fee)}</td><td class="num">${inr(f.paid)}</td><td class="num strong">${inr(future ? f.fee - f.paid : f.balance)}</td><td>${pill}</td></tr>`;
+  }).join("");
+  const unpaid = d.kind !== "paid" && d.kind !== "none" && d.kind !== "upcoming" || d.prevDue;
+  modal({
+    title: "Fees · " + s.name,
+    wide: true,
+    body: `
+      <div class="stats">
+        <div class="stat"><span>Monthly fee</span><b>${inr(s.monthlyFee)}</b></div>
+        <div class="stat"><span>Due every month on</span><b>${esc(ordinal(dueDay(s)))}</b></div>
+        <div class="stat ${d.kind === "late" || d.kind === "today" ? "bad" : d.kind === "soon" ? "warn" : d.kind === "paid" ? "good" : ""}"><span>${esc(monthLabel(curMk))}</span><b style="font-size:18px;margin-top:6px">${feeDuePill(d)}</b></div>
+      </div>
+      ${d.kind === "soon" || d.kind === "today" ? `<div class="note warn" style="margin-bottom:12px">Fee is due on <b>${esc(fmtDate(d.due))}</b> — send a reminder to the parent.</div>` : ""}
+      ${d.kind === "late" ? `<div class="note bad" style="margin-bottom:12px">Fee was due on <b>${esc(fmtDate(d.due))}</b> and is not paid yet (balance ${inr(d.balance)}).</div>` : ""}
+      ${d.prevDue ? `<div class="note bad" style="margin-bottom:12px">Last month also has an unpaid balance of <b>${inr(d.prevDue)}</b>.</div>` : ""}
+      <div class="table-wrap"><table class="t">
+        <thead><tr><th>Month</th><th>Due date</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="6" class="sub">No months yet.</td></tr>`}</tbody>
+      </table></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:flex-end">
+        <div class="fld" style="width:170px"><label for="fcDay">Fee due day (1–31)</label><input id="fcDay" type="number" min="1" max="31" value="${esc(s.feeDueDay || "")}" placeholder="${esc(String(dueDay(s)))}"></div>
+        <button class="btn btn-ghost btn-sm" type="button" id="fcSaveDay" style="margin-bottom:4px">Save due day</button>
+        <span style="flex:1"></span>
+        ${unpaid ? `<a class="btn btn-wa" href="${esc(waLink(s.phone, reminderText(s, d)))}" target="_blank" rel="noopener">${ICONS.wa}Send reminder</a>` : ""}
+        <a class="btn btn-accent" href="#/receipts?student=${esc(s.id)}">${ICONS.plus}Record payment</a>
+      </div>`,
+    actions: [{ label: "Close", kind: "btn-navy" }],
+    onOpen: (m, close) => {
+      $$('a[href^="#/receipts"]', m).forEach((a) => a.addEventListener("click", () => close()));
+      $("#fcSaveDay", m).addEventListener("click", async () => {
+        const v = $("#fcDay", m).value;
+        const n = v === "" ? "" : Math.round(Number(v));
+        if (n !== "" && !(n >= 1 && n <= 31)) { toast("Enter a day between 1 and 31", "bad"); return; }
+        await put("students", { id: s.id, feeDueDay: n });
+        toast("Fee due day saved", "ok");
+        close();
+        const fresh = ctx.students.find((x) => x.id === s.id);
+        if (fresh) feeCard(fresh);
+      });
+    }
+  });
 }
 
 function tutorPicker(current) {
@@ -128,6 +215,8 @@ function editStudent(s) {
         <div class="fld full"><label>Tutor</label>${tutorPicker(s)}</div>
         <div class="fld"><label>Monthly fee (₹) *</label><input name="monthlyFee" type="number" min="0" step="50" value="${esc(v.monthlyFee)}"></div>
         <div class="fld"><label>Join date</label><input name="joinDate" type="date" value="${esc(v.joinDate)}"></div>
+        <div class="fld"><label>Fee due day (1–31)</label><input name="feeDueDay" type="number" min="1" max="31" value="${esc(v.feeDueDay || "")}" placeholder="Same day as joining"></div>
+        <div class="fld"><label>Hours per class</label><input name="classHours" type="number" min="0" step="0.25" value="${esc(v.classHours || "")}" placeholder="From schedule, e.g. 1"></div>
         <div class="fld"><label>Status</label><select name="status">${options(["Active", "Inactive"], v.status || "Active")}</select></div>
       </div>`,
     actions: [
@@ -145,7 +234,11 @@ function editStudent(s) {
           const tut = resolveTutor(pick);
           if (!tut) { toast("Tutor not found — pick one from the list or leave it empty", "bad"); return false; }
           f.monthlyFee = Number(f.monthlyFee);
-          await put("students", s ? { ...f, ...tut, id: s.id } : { ...f, ...tut });
+          if (f.feeDueDay !== "") { f.feeDueDay = Math.round(Number(f.feeDueDay)); if (!(f.feeDueDay >= 1 && f.feeDueDay <= 31)) { toast("Fee due day must be 1–31", "bad"); return false; } }
+          if (f.classHours !== "") f.classHours = Number(f.classHours) || 0;
+          if (tut.tutorId && (!s || s.tutorId !== tut.tutorId)) tut.allocatedOn = todayISO();
+          // students added here (not converted from a booking) are counted as direct admissions in Reports
+          await put("students", s ? { ...f, ...tut, id: s.id } : { ...f, ...tut, source: "Direct (admin)" });
           toast(s ? "Student updated" : "Student added", "ok");
         }
       }

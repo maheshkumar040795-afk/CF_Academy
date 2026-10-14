@@ -35,7 +35,22 @@ const SUBJECT_RULES = [
   ["economics", /\beco/],
   ["computer science", /\bcomputer|\bcs\b|\bpython|\bjava\b|\bcoding/],
   ["french", /\bfrench/],
-  ["sanskrit", /\bsanskrit/]
+  ["sanskrit", /\bsanskrit/],
+  // competitive exams
+  ["neet", /\bneet\b/],
+  ["jee", /\bjee\b|\biit.?jee/],
+  ["tnpsc", /\btnpsc|\bgroup\s?(1|2|4|i|ii|iv)\b/],
+  ["upsc", /\bupsc|\bias\b|\bcivil serv/],
+  ["ssc", /\bssc\b/],
+  ["banking", /\bbank|\bibps|\bsbi\b/],
+  ["railway", /\brrb\b|\brailway/],
+  ["tet", /\btet\b|\bctet|\btntet/],
+  ["ca foundation", /\bca\b|\bca foundation|\bchartered/],
+  ["clat", /\bclat\b/],
+  ["cuet", /\bcuet\b/],
+  ["nda", /\bnda\b|\bdefence/],
+  ["gate", /\bgate\b|\btancet/],
+  ["olympiad", /\bolympiad|\bntse/]
 ];
 export function canonSubjects(str) {
   const s = String(str || "").toLowerCase();
@@ -114,6 +129,53 @@ export function feeFor(student, payments, mk) {
   else if (paid > 0) status = "Partial";
   if (!fee) status = paid ? "Paid" : "No fee set";
   return { fee, paid: Math.round(paid), balance, status };
+}
+
+// ── Fee due date & reminder window ──
+export const DUE_SOON_DAYS = 3;
+const pISO = (v) => { if (!v || !/^\d{4}-\d{2}-\d{2}/.test(v)) return null; const [y, m, d] = v.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };
+// Day of the month the fee is due: set on the student, else the joining day, else the 5th
+export function dueDay(s) {
+  const n = Number(s.feeDueDay);
+  if (n >= 1 && n <= 31) return n;
+  const j = pISO(s.joinDate);
+  return j ? j.getDate() : 5;
+}
+export function dueDateFor(s, mk) {
+  const [y, m] = mk.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  const d = new Date(y, m - 1, Math.min(dueDay(s), last));
+  const j = pISO(s.joinDate);
+  return j && j > d && j.getFullYear() === y && j.getMonth() === m - 1 ? j : d;
+}
+// What the ₹ fee icon shows for a student this month:
+// paid · upcoming (more than 3 days away) · soon (within 3 days) · today · late (overdue)
+export function feeDue(s, payments, today = new Date()) {
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const mk = t0.getFullYear() + "-" + String(t0.getMonth() + 1).padStart(2, "0");
+  const f = feeFor(s, payments, mk);
+  const due = dueDateFor(s, mk);
+  const days = Math.round((due - t0) / 864e5);
+  const j = pISO(s.joinDate);
+  const dLabel = due.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  // unpaid balance from the previous month (only if the student had joined by then)
+  const pm = new Date(t0.getFullYear(), t0.getMonth() - 1, 1);
+  const pmk = pm.getFullYear() + "-" + String(pm.getMonth() + 1).padStart(2, "0");
+  const prev = !j || j <= new Date(pm.getFullYear(), pm.getMonth() + 1, 0) ? feeFor(s, payments, pmk) : null;
+  const prevDue = prev && prev.fee && prev.balance > 0 ? prev.balance : 0;
+  let kind, label;
+  if (!f.fee) { kind = "none"; label = "No fee set"; }
+  else if (j && j > t0 && (j.getFullYear() > t0.getFullYear() || j.getMonth() > t0.getMonth())) { kind = "upcoming"; label = "Starts " + j.toLocaleDateString("en-IN", { day: "numeric", month: "short" }); }
+  else if (f.status === "Paid") { kind = "paid"; label = "Paid"; }
+  else if (days > DUE_SOON_DAYS) { kind = "upcoming"; label = "Due " + dLabel; }
+  else if (days > 0) { kind = "soon"; label = `Due in ${days} day${days === 1 ? "" : "s"}`; }
+  else if (days === 0) { kind = "today"; label = "Due today"; }
+  else { kind = "late"; label = `Overdue ${-days} day${days === -1 ? "" : "s"}`; }
+  return { ...f, mk, due, days, kind, label, prevDue };
+}
+export function feeDuePill(d) {
+  const cls = { paid: "p-paid", upcoming: "p-lost", soon: "p-soon", today: "p-late", late: "p-late", none: "p-lost" }[d.kind] || "p-lost";
+  return `<span class="pill ${cls}">${esc(d.label)}</span>`;
 }
 
 export function feePill(st) {

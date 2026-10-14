@@ -64,6 +64,11 @@ service cloud.firestore {
       allow read, create: if isTeam();
       allow update, delete: if isAdmin();
     }
+    // tutor salary payouts (Tutors → ₹ Finance)
+    match /tutorPayouts/{id} {
+      allow read, create, update: if isTeam();
+      allow delete: if isAdmin();
+    }
     // receipt number counter
     match /meta/{id} {
       allow read, write: if isTeam();

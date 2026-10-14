@@ -53,21 +53,40 @@ function bars(entries, fmt = (v) => v) {
     <div class="bar-row"><span>${esc(k)}</span><div class="track"><div class="fill ${i === 0 ? "top" : ""}" style="width:${Math.max(2, (v / max) * 100)}%"></div></div><span class="v">${esc(fmt(v))}</span></div>`).join("")}</div>`;
 }
 const cap = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+const EXAM_LABEL = { neet: "NEET", jee: "JEE", tnpsc: "TNPSC", upsc: "UPSC", ssc: "SSC", tet: "TET / CTET", clat: "CLAT", cuet: "CUET",
+  nda: "NDA / Defence", gate: "GATE / TANCET", "ca foundation": "CA Foundation", railway: "RRB Railway", banking: "Banking exams", olympiad: "Olympiad / NTSE" };
+const subjLabel = (k) => EXAM_LABEL[k] || cap(k);
+
+// When a student became a student: created date, else join date
+function admittedAt(s) {
+  if (s.createdAt) return s.createdAt;
+  const [y, m, d] = String(s.joinDate || "").split("-").map(Number);
+  return y ? new Date(y, m - 1, d).getTime() : 0;
+}
+const isDirect = (s) => !s.bookingId;
 
 function data() {
   const bk = ctx.bookings.filter((b) => inRange(b.createdAt));
+  const web = bk.filter((b) => b.source === "website").length;
+  const phoneLeads = bk.length - web;
+  const admitted = ctx.students.filter((s) => inRange(admittedAt(s)));
+  const direct = admitted.filter(isDirect).length;
+  const fromBookings = admitted.length - direct;
   const pays = ctx.payments.filter((p) => {
     const [y, m, d] = String(p.date || "").split("-").map(Number);
     return inRange(y ? new Date(y, m - 1, d).getTime() : p.createdAt);
   });
   const converted = bk.filter((b) => b.status === "Converted").length;
   const collected = pays.reduce((a, p) => a + (Number(p.amount) || 0), 0);
-  const bySubject = countBy(bk, (b) => [...canonSubjects(b.subjects)].map(cap)).slice(0, 10);
+  const bySubject = countBy(bk, (b) => [...canonSubjects(b.subjects)].map(subjLabel)).slice(0, 10);
   const byStatus = BOOKING_STATUSES.map((s) => [s, bk.filter((b) => (b.status || "New") === s).length]).filter((e) => e[1]);
   const byPlace = countBy(bk, (b) => [b.mode === "Online tuition" ? "Online" : (b.area ? cap(String(b.area).trim().toLowerCase()) : b.city)]).slice(0, 10);
   const months = lastMonths(st.range === "all" ? 12 : Math.max(Number(st.range), 3));
   const monthly = months.map((mk) => [mk, ctx.payments.filter((p) => String(p.date || "").slice(0, 7) === mk).reduce((a, p) => a + (Number(p.amount) || 0), 0)]);
   const monthlyBk = months.map((mk) => [mk, ctx.bookings.filter((b) => monthKey(new Date(b.createdAt)) === mk).length]);
+  const monthlyAdm = months.map((mk) => [mk, ctx.students.filter((s) => admittedAt(s) && monthKey(new Date(admittedAt(s))) === mk).length]);
+  const monthlyDirect = months.map((mk) => [mk, ctx.students.filter((s) => isDirect(s) && admittedAt(s) && monthKey(new Date(admittedAt(s))) === mk).length]);
+  const bySource = [["Website bookings", web], ["Phone / walk-in leads", phoneLeads], ["Students from bookings", fromBookings], ["Direct admissions (added in admin)", direct]];
   const tutorRows = new Map();
   ctx.students.filter((s) => (s.status || "Active") === "Active" && s.tutorId).forEach((s) => {
     const r = tutorRows.get(s.tutorId) || { name: s.tutorName, students: 0, fees: 0 };
@@ -75,7 +94,7 @@ function data() {
     tutorRows.set(s.tutorId, r);
   });
   const tutorsTop = [...tutorRows.values()].sort((a, b) => b.students - a.students);
-  return { bk, pays, converted, collected, bySubject, byStatus, byPlace, monthly, monthlyBk, tutorsTop };
+  return { bk, pays, converted, collected, bySubject, byStatus, byPlace, monthly, monthlyBk, tutorsTop, web, phoneLeads, admitted, direct, fromBookings, monthlyAdm, monthlyDirect, bySource };
 }
 
 function refresh() {
@@ -86,8 +105,10 @@ function refresh() {
   const avgCall = callTimes.length ? callTimes.reduce((a, b) => a + b, 0) / callTimes.length : 0;
   const fmtDur = (ms) => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} m`; };
   $("#rpStats", root).innerHTML = `
-    <div class="stat"><span>Bookings</span><b>${d.bk.length}</b></div>
-    <div class="stat good"><span>Converted to students</span><b>${d.converted} <span style="font-size:14px">${conv}%</span></b></div>
+    <div class="stat"><span>Bookings / leads</span><b>${d.bk.length}</b><span>${d.web} website · ${d.phoneLeads} phone / walk-in</span></div>
+    <div class="stat good"><span>Bookings converted</span><b>${d.converted} <span style="font-size:14px">${conv}%</span></b></div>
+    <div class="stat"><span>Direct admissions</span><b>${d.direct}</b><span>Called &amp; added in admin</span></div>
+    <div class="stat good"><span>Total new students</span><b>${d.admitted.length}</b><span>Bookings + direct</span></div>
     <div class="stat"><span>Fees collected</span><b>${inr(d.collected)}</b></div>
     <div class="stat"><span>Avg. time to first call</span><b>${callTimes.length ? fmtDur(avgCall) : "—"}</b></div>`;
 
@@ -101,6 +122,9 @@ function refresh() {
   $("#rpGrid", root).innerHTML = `
     <div class="panel"><h2>Fees collected by month (₹)</h2>${cols(d.monthly, maxM, k)}</div>
     <div class="panel"><h2>Bookings by month</h2>${cols(d.monthlyBk, maxB, String)}</div>
+    <div class="panel"><h2>New students by month <span class="sub" style="display:inline;font-weight:400">· incl. direct admissions</span></h2>${cols(d.monthlyAdm, Math.max(1, ...d.monthlyAdm.map((m) => m[1])), String)}
+      <p class="sub" style="margin-top:8px">Direct admissions: ${d.monthlyDirect.map(([mk, v]) => `${esc(monthLabel(mk).slice(0, 3))} ${v}`).join(" · ")}</p></div>
+    <div class="panel"><h2>Leads &amp; admissions by source</h2>${bars(d.bySource)}</div>
     <div class="panel"><h2>Bookings by subject</h2>${bars(d.bySubject)}</div>
     <div class="panel"><h2>Bookings by status</h2>${bars(d.byStatus)}</div>
     <div class="panel"><h2>Top areas (home) and online</h2>${bars(d.byPlace)}</div>
@@ -113,7 +137,9 @@ function refresh() {
 function exportReport() {
   const d = data();
   exportXlsx({
-    "Summary": [{ "Period": $("#rRange", root).selectedOptions[0].textContent, "Bookings": d.bk.length, "Converted": d.converted, "Fees collected": d.collected }],
+    "Summary": [{ "Period": $("#rRange", root).selectedOptions[0].textContent, "Bookings / leads": d.bk.length, "Website bookings": d.web, "Phone / walk-in leads": d.phoneLeads,
+      "Bookings converted": d.converted, "Direct admissions": d.direct, "Total new students": d.admitted.length, "Fees collected": d.collected }],
+    "New students by month": d.monthlyAdm.map(([mk, v], i) => ({ Month: monthLabel(mk), "New students": v, "Of which direct": d.monthlyDirect[i][1] })),
     "Collections by month": d.monthly.map(([mk, v]) => ({ Month: monthLabel(mk), Amount: v })),
     "Bookings by subject": d.bySubject.map(([k2, v]) => ({ Subject: k2, Bookings: v })),
     "Bookings by status": d.byStatus.map(([k2, v]) => ({ Status: k2, Bookings: v })),

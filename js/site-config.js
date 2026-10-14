@@ -32,6 +32,13 @@ export const SUBJECTS = [
   "Commerce", "Economics", "Computer Science", "All Subjects"
 ];
 
+// Competitive exams parents/students can pick in the booking form (shown next to subjects).
+export const EXAMS = [
+  "NEET", "JEE Main / Advanced", "TNPSC Group 1 / 2 / 4", "UPSC Civil Services", "SSC (CGL / CHSL)",
+  "Banking (IBPS / SBI)", "RRB Railway Exams", "TET / CTET", "CA Foundation", "CLAT",
+  "CUET", "NDA / Defence", "GATE", "TANCET", "Olympiad / NTSE"
+];
+
 export const CLASSES = [
   "LKG", "UKG", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5",
   "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11",
@@ -75,12 +82,12 @@ export const PROGRAMS = [
     text: "Board-exam focused coaching for Science and Commerce — Physics, Chemistry, Maths, Biology, Accountancy and more.",
     
     image: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1791869152/images_17.jpg", cls: "Class 11", subject: "" },
-  { title: "Exam Coaching", tag: "Competitive & entrance exams", icon: "target",
-    text: "Focused preparation with practice tests, time management and doubt-clearing sessions.",
+  { title: "Competitive Exams Coaching", tag: "NEET · JEE · TNPSC · UPSC · Banking", icon: "target",
+    text: "Focused preparation for entrance and government exams, with practice tests, time management and doubt-clearing sessions.",
     
-    image: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1791899130/6a8ea2da2c30d03b8732a30a.png", cls: "", subject: "", note: "Exam coaching" },
-  { title: "IT Courses", tag: "School & college students", icon: "code",
-    text: "Computer and programming courses that build practical, job-ready skills step by step.",
+    image: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1791899130/6a8ea2da2c30d03b8732a30a.png", cls: "", subject: "", exam: true, note: "Competitive exams coaching" },
+  { title: "IT Courses", tag: "Python · Java · Web · Data Science", icon: "code",
+    text: "Computer and programming courses for school students, college students and job seekers, with practical, job-ready skills taught step by step.",
     
     image: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1791899127/IT_course.jpg", cls: "College / Other", subject: "Computer Science" }
 ];
@@ -89,6 +96,8 @@ export const PROGRAMS = [
 // Each item can pre-fill the booking form: cls (class), subject (one of SUBJECTS), board, or note.
 // badge: "New" shows a small red "New" label.
 const L = (label, extra = {}) => ({ label, note: label, ...extra });
+// exam: one of EXAMS — ticks that exam in the booking form
+const EX = (label, exam) => ({ label, exam });
 const IT = (label) => ({ label, note: label, cls: "College / Other", subject: "Computer Science" });
 export const CATEGORIES = [
   { tab: "Online Classes", mode: "Online tuition", groups: [
@@ -143,13 +152,16 @@ export const CATEGORIES = [
       IT("PHP"), IT("Java Script Training"), IT("Adobe Photoshop Training"), IT("DevOps Training"), IT("Data Science")] },
     { title: "More", cols: 1, items: [ IT("All IT Courses"), IT("Software Training Institutes") ] }
   ] },
-  { tab: "Exam Coaching", groups: [
-    { title: "Study Abroad", cols: 1, items: [
-      L("IELTS Coaching"), L("PTE Academic Exam Coaching"), L("GRE Coaching"), L("GMAT Coaching"), L("TOEFL Coaching")] },
-    { title: "Study in India", cols: 1, items: [
-      L("Engineering Entrance Coaching"), L("CA Coaching"), L("MBA Entrance Coaching"), L("Medical Entrance Coaching"), L("CET Coaching")] },
+  { tab: "Competitive Exams", groups: [
+    { title: "Entrance Exams", cols: 1, items: [
+      EX("NEET Coaching", "NEET"), EX("JEE Main / Advanced", "JEE Main / Advanced"), EX("CUET Coaching", "CUET"),
+      EX("CLAT Coaching", "CLAT"), EX("TANCET / GATE", "TANCET")] },
+    { title: "Government Exams", cols: 1, items: [
+      EX("TNPSC Group 1 / 2 / 4", "TNPSC Group 1 / 2 / 4"), EX("UPSC Civil Services", "UPSC Civil Services"),
+      EX("SSC (CGL / CHSL)", "SSC (CGL / CHSL)"), EX("Banking (IBPS / SBI)", "Banking (IBPS / SBI)"), EX("RRB Railway Exams", "RRB Railway Exams")] },
     { title: "Other Exams", cols: 1, items: [
-      L("IBPS Exam Coaching"), L("UPSC Exams Coaching"), L("Staff Selection Commission Exam"), L("Bank Clerical Exam Coaching"), L("UGC NET Exam Coaching")] },
-    { title: "More", cols: 1, items: [ L("All Exam Coaching Classes") ] }
+      EX("TET / CTET", "TET / CTET"), EX("CA Foundation", "CA Foundation"), EX("NDA / Defence", "NDA / Defence"),
+      EX("Olympiad / NTSE", "Olympiad / NTSE"), L("IELTS / TOEFL Coaching")] },
+    { title: "More", cols: 1, items: [ L("All Competitive Exams Coaching") ] }
   ] }
 ];

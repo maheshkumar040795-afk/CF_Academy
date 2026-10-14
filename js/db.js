@@ -10,8 +10,8 @@ const FB_CDN = "https://www.gstatic.com/firebasejs/10.12.2/";
 export const isDemo = !!FORCE_DEMO || !firebaseConfig.apiKey || !firebaseConfig.projectId;
 export const OWNERS = (OWNER_EMAILS || []).map((e) => String(e).trim().toLowerCase()).filter(Boolean);
 
-// Collections used: bookings, tutors, students, payments, staff, meta, banners, featuredTutors, reviews
-const WATCH_LIMIT = { bookings: 1000, students: 3000, payments: 6000, staff: 200, banners: 20, featuredTutors: 30, reviews: 500 };
+// Collections used: bookings, tutors, students, payments, tutorPayouts, staff, meta, banners, featuredTutors, reviews
+const WATCH_LIMIT = { bookings: 1000, students: 3000, payments: 6000, tutorPayouts: 6000, staff: 200, banners: 20, featuredTutors: 30, reviews: 500 };
 
 // ───────────────────────── Firebase ─────────────────────────
 let fbPromise = null;
@@ -70,7 +70,7 @@ function uid() {
 function demoSeed() {
   const now = Date.now();
   const h = 3600e3;
-  const s = { bookings: {}, tutors: {}, students: {}, payments: {}, staff: {}, banners: {}, featuredTutors: {}, reviews: {}, meta: { counters: {} } };
+  const s = { bookings: {}, tutors: {}, students: {}, payments: {}, tutorPayouts: {}, staff: {}, banners: {}, featuredTutors: {}, reviews: {}, meta: { counters: {} } };
   // sample "Meet our tutors" cards (replace from Admin → Website Tutors)
   [["Priya Raman", "12 yrs", "Maths · Class 6–10"], ["Karthik S", "9 yrs", "Physics · Class 11–12"], ["Divya Narayanan", "15 yrs", "English · All classes"],
    ["Arun Kumar", "8 yrs", "Chemistry · NEET / JEE"], ["Meena Lakshmi", "11 yrs", "Primary · LKG–Class 5"], ["Suresh Babu", "17 yrs", "Accountancy · Class 11–12"],

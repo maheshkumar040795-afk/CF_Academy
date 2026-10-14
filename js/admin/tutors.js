@@ -1,8 +1,9 @@
 // Tutors — 850+ faculty: search, add / edit / delete, Excel import & export
 import { put, remove, bulkPut } from "../db.js";
-import { SUBJECTS, CITIES } from "../site-config.js";
+import { SUBJECTS, EXAMS, CITIES } from "../site-config.js";
 import { $, $$, esc, fmtPhone, normPhone, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, ICONS } from "./ui.js";
 import { canonSubjects } from "./common.js";
+import { openTutorFinance, openSalarySheet, payoutFor, currentPeriod } from "./tutorpay.js";
 
 const PAGE = 50;
 const st = { q: "", subject: "", city: "", mode: "", status: "", page: 0 };
@@ -54,6 +55,7 @@ function render(view, c) {
     <div class="page-head">
       <div><h1>Tutors</h1><p id="tCount">Loading tutors…</p></div>
       <div class="actions">
+        <button class="btn btn-ghost" id="tSalary">${ICONS.fees}Salary sheet</button>
         <button class="btn btn-ghost" id="tTemplate">${ICONS.download}Excel template</button>
         <button class="btn btn-ghost" id="tExport">${ICONS.download}Export all</button>
         <button class="btn btn-accent" id="tImport">${ICONS.upload}Import Excel</button>
@@ -62,7 +64,7 @@ function render(view, c) {
     </div>
     <div class="filters">
       <div class="fld grow"><label for="tQ">Search</label><input id="tQ" placeholder="Name, mobile, subject, area" value="${esc(st.q)}"></div>
-      <div class="fld"><label for="tSubj">Subject</label><select id="tSubj">${options(SUBJECTS.filter((s) => s !== "All Subjects"), st.subject, "All subjects")}</select></div>
+      <div class="fld"><label for="tSubj">Subject</label><select id="tSubj">${options([...SUBJECTS.filter((s) => s !== "All Subjects"), ...EXAMS], st.subject, "All subjects / exams")}</select></div>
       <div class="fld"><label for="tCity">City</label><select id="tCity">${options(CITIES, st.city, "All cities")}</select></div>
       <div class="fld"><label for="tMode">Mode</label><select id="tMode">${options(["Home", "Online"], st.mode, "Any")}</select></div>
       <div class="fld"><label for="tStatus">Status</label><select id="tStatus">${options(["Active", "Inactive"], st.status, "All")}</select></div>
@@ -76,6 +78,7 @@ function render(view, c) {
     $(sel, view).addEventListener("change", (e) => { st[key] = e.target.value; st.page = 0; renderList(); }));
   $("#tAdd", view).addEventListener("click", () => editTutor(null));
   $("#tTemplate", view).addEventListener("click", downloadTemplate);
+  $("#tSalary", view).addEventListener("click", () => openSalarySheet(ctx));
   $("#tExport", view).addEventListener("click", exportAll);
   $("#tImport", view).addEventListener("click", () => {
     if (!window.XLSX) { toast("Excel library is still loading — try again in a moment.", "bad"); return; }
@@ -110,7 +113,7 @@ function renderList() {
       <button class="btn btn-ghost" data-act="template">${ICONS.download}Download Excel template</button>
     </div>` : rows.length ? `
     <div class="table-wrap"><table class="t">
-      <thead><tr><th>Tutor</th><th>Subjects · classes</th><th>Areas · city</th><th>Mode</th><th class="num">Exp</th><th class="num">Fee/hr</th><th class="num">Students</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Tutor</th><th>Subjects · classes</th><th>Areas · city</th><th>Mode</th><th class="num">Exp</th><th class="num">Salary/hr</th><th class="num">Students</th><th>Status</th><th></th></tr></thead>
       <tbody>${slice.map((t) => `
         <tr>
           <td><span class="strong">${esc(t.name)}</span><span class="sub">${esc(fmtPhone(t.phone))}${t.gender ? " · " + esc(t.gender) : ""}${t.qualification ? " · " + esc(t.qualification) : ""}</span></td>
@@ -122,6 +125,7 @@ function renderList() {
           <td class="num">${counts[t.id] || 0}</td>
           <td><span class="pill ${(t.status || "Active") === "Active" ? "p-paid" : "p-lost"}">${esc(t.status || "Active")}</span></td>
           <td style="white-space:nowrap">
+            ${finBtn(t, counts[t.id] || 0)}
             <button class="btn btn-ghost btn-sm" data-act="edit" data-id="${esc(t.id)}">Edit</button>
             ${ctx.isAdmin ? `<button class="btn btn-danger btn-sm" data-act="del" data-id="${esc(t.id)}">Delete</button>` : ""}
           </td>
@@ -133,6 +137,14 @@ function renderList() {
   $$("[data-p]", $("#tPager", root)).forEach((b) => b.addEventListener("click", () => { st.page += Number(b.dataset.p); renderList(); window.scrollTo({ top: 0, behavior: "smooth" }); }));
 }
 
+// ₹ Finance button: green when this month's salary is paid, amber when pending
+function finBtn(t, n) {
+  const p = payoutFor(ctx, t.id, "month", currentPeriod("month"));
+  const cls = p ? (p.status === "Paid" ? "fin-paid" : "fin-pending") : n ? "fin-due" : "";
+  const tip = p ? `${p.status === "Paid" ? "Salary paid" : "Salary pending"} for this month` : n ? "Salary for this month not paid yet" : "Salary / finance";
+  return `<button class="icon-btn ${cls}" data-act="fin" data-id="${esc(t.id)}" title="${esc(tip)}" aria-label="Salary for ${esc(t.name)}: ${esc(tip)}">${ICONS.fees}</button>`;
+}
+
 async function onListClick(e) {
   const b = e.target.closest("[data-act]");
   if (!b) return;
@@ -140,6 +152,7 @@ async function onListClick(e) {
   const t = ctx.tutors.find((x) => x.id === b.dataset.id);
   if (!t) return;
   if (b.dataset.act === "edit") editTutor(t);
+  if (b.dataset.act === "fin") openTutorFinance(ctx, t);
   if (b.dataset.act === "del") {
     const n = activeStudentsOf(t.id);
     const msg = n
@@ -169,7 +182,8 @@ function editTutor(t) {
         <div class="fld"><label>Experience (years)</label><input name="experience" type="number" min="0" value="${esc(v.experience)}"></div>
         <div class="fld full"><label>Areas served</label><input name="area" value="${esc(v.area)}" placeholder="Velachery, Adyar, Guindy"></div>
         <div class="fld"><label>City</label><input name="city" list="cityList" value="${esc(v.city)}"><datalist id="cityList">${CITIES.map((c) => `<option value="${esc(c)}">`).join("")}</datalist></div>
-        <div class="fld"><label>Fee per hour (₹)</label><input name="fee" type="number" min="0" value="${esc(v.fee)}"></div>
+        <div class="fld"><label>Salary per hour (₹)</label><input name="fee" type="number" min="0" value="${esc(v.fee)}"></div>
+        <div class="fld"><label>UPI ID (for salary)</label><input name="upi" value="${esc(v.upi || "")}" placeholder="name@okaxis"></div>
         <div class="fld"><label>Status</label><select name="status">${options(["Active", "Inactive"], v.status || "Active")}</select></div>
         <div class="fld full"><label>Notes</label><textarea name="notes">${esc(v.notes)}</textarea></div>
       </div>`,
@@ -328,4 +342,4 @@ async function importFile(file) {
 
 function refresh() { renderList(); }
 
-export default { deps: ["tutors", "students"], render, refresh };
+export default { deps: ["tutors", "students", "tutorPayouts"], render, refresh };

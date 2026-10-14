@@ -51,7 +51,7 @@ ES modules need a web server; opening the file directly from disk will not work.
 3. **Build → Authentication → Get started → Email/Password → Enable.**
 4. **Authentication → Users → Add user** — create the **2 OWNER logins** (email + strong password). Put the same 2 emails in `OWNER_EMAILS` in `js/firebase-config.js`.
 5. `firebaseConfig` is already filled in `js/firebase-config.js` (project `cf-academy-729b6`).
-6. **Firestore → Rules** → paste `firestore.rules`, put the same 2 owner emails in `isOwner()` (lower case) → **Publish**.
+6. **Firestore → Rules** → paste `firestore.rules` (re-publish after every update — it now includes `tutorPayouts`), put the same 2 owner emails in `isOwner()` (lower case) → **Publish**.
 7. Every other person gets a login from **Admin → Staff Config** (no Firebase console needed).
 7. **Authentication → Settings → Authorized domains** → add your domain (e.g. `cfacademy.in`).
 
@@ -65,7 +65,7 @@ Edit `js/site-config.js`: office **address** (currently `[OFFICE ADDRESS]`), ema
 The 6 cards under “Our services” are listed in `PROGRAMS` at the bottom of `js/site-config.js`. To add a photo, paste its URL into that card's `image: ""` (any size — the full photo is shown, never cropped). Cards without a photo show a branded icon.
 
 ### “Find a tutor for anything” table
-Tabs, groups and items are in `CATEGORIES` at the bottom of `js/site-config.js` (Online Classes, Tuition, Languages, IT Courses, Exam Coaching). Clicking an item pre-fills the booking form. Please confirm the IT courses and exams listed there with the academy.
+Tabs, groups and items are in `CATEGORIES` at the bottom of `js/site-config.js` (Online Classes, Tuition, Languages, IT Courses, Competitive Exams). The exams parents can tick in the booking form are in `EXAMS`. Clicking an item pre-fills the booking form. Please confirm the IT courses and exams listed there with the academy.
 
 ### Cloudinary (banner + tutor photo uploads)
 Admin → **Website Banners** and **Website Tutors** upload photos to your free Cloudinary account (cloud name `u3hhrbtz`). Until the preset below is filled in, photos are compressed and saved in Firestore instead, so everything still works.
@@ -128,7 +128,8 @@ Deactivating a staff login in Staff Config blocks it immediately (Firestore rule
 - **Dashboard** — today's bookings, waiting/overdue calls (red after 2 hours), fees collected and pending.
 - **Bookings / Leads** — live list with status tabs; call / WhatsApp parent; "being handled by" so two admins don't call the same parent; best-matched tutor suggestions (subject + area/city, or online); assign tutor; WhatsApp the tutor with the requirement; follow-up date and call notes; convert to student; add phone/walk-in leads; export to Excel.
 - **Tutors** — 850+ tutors with search and filters, add / edit / delete (warns if the tutor has active students), Excel import/export.
-- **Students** — tutor, schedule, monthly fee, this month's fee status, payment history.
+- **Tutor salary (₹ icon on each tutor, and "Salary sheet")** — weekly or monthly salary = classes of the tutor's allocated students × hours per class × the tutor's salary per hour ("Fee per hour" column). Class days come from the student's schedule (e.g. "Mon, Wed, Fri · 6 – 8 PM") and can be corrected in the salary screen. Enter leave days to deduct (hours lost per leave day is pre-filled, deduction is editable), add any +/− adjustment, then **Save as pending** or **Mark as paid** (UPI / bank / cash + reference). With the tutor's UPI ID saved, "Open UPI app" starts the transfer on a phone; "Send salary slip" WhatsApps the tutor. Weekly payouts inside a month are subtracted from that month's salary so nothing is paid twice. Saved in the `tutorPayouts` collection.
+- **Students** — tutor, schedule, monthly fee, payment history. A **₹ fee icon** on every row: green = paid this month, amber = due within 3 days, red = due today / overdue; it opens the month-wise fee card with due dates, last month's balance, WhatsApp reminder and Record payment. The fee is due on the joining day each month unless a **Fee due day** is set on the student. Students added here (not from a booking) are counted as **direct admissions**.
 - **Fees** — month view of paid / partial / due, WhatsApp reminder, export.
-- **Receipts** — numbered receipts `CFA/2026-27/0001` (financial year), print / save as PDF, send summary on WhatsApp.
-- **Reports** — collections and bookings by month, by subject, status and area, tutor-wise students; Excel download.
+- **Receipts** — numbered receipts `CFA/2026-27/0001` (financial year), print / save as PDF, send summary on WhatsApp, Delete button on every receipt (Owner/Admin).
+- **Reports** — bookings / leads (website vs phone), bookings converted, **direct admissions** (students added straight in admin), total new students, collections and bookings by month, new students by month, by subject/exam, status and area, tutor-wise students; Excel download.

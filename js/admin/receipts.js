@@ -66,6 +66,8 @@ function render(view, c, params) {
   $("#payForm", view).addEventListener("submit", savePayment);
   $("#rQ", view).addEventListener("input", debounce((e) => { st.q = e.target.value.trim(); renderList(); }, 200));
   $("#rList", view).addEventListener("click", (e) => {
+    const del = e.target.closest("[data-del]");
+    if (del) { const p = ctx.payments.find((x) => x.id === del.dataset.del); if (p) deleteReceipt(p); return; }
     const tr = e.target.closest("tr[data-id]"); if (!tr) return;
     st.shownId = tr.dataset.id; renderPreview(); renderList();
     $("#rPreview", root).scrollIntoView({ behavior: "smooth", block: "start" });
@@ -191,12 +193,17 @@ function renderPreview() {
     </div>
     ${receiptHTML(p)}`;
   $("#rPrint", box).addEventListener("click", () => window.print());
-  $("#rDel", box) && $("#rDel", box).addEventListener("click", async () => {
-    if (!(await confirmBox("Delete receipt?", `Delete receipt <b>${esc(p.receiptNo)}</b> for ${esc(p.studentName)} (${inr(p.amount)})? The fee will show as unpaid again. The receipt number is not reused.`, "Delete receipt"))) return;
+  $("#rDel", box) && $("#rDel", box).addEventListener("click", () => deleteReceipt(p));
+}
+
+async function deleteReceipt(p) {
+  if (!ctx.isAdmin) { toast("Only an Owner or Admin login can delete receipts.", "bad"); return; }
+  if (!(await confirmBox("Delete receipt?", `Delete receipt <b>${esc(p.receiptNo)}</b> for ${esc(p.studentName)} (${inr(p.amount)}, ${esc(p.monthsLabel)})? The fee will show as unpaid again. The receipt number is not reused.`, "Delete receipt"))) return;
+  try {
     await remove("payments", p.id);
-    st.shownId = null;
-    toast("Receipt deleted");
-  });
+    if (st.shownId === p.id) st.shownId = null;
+    toast(`Receipt ${p.receiptNo} deleted`);
+  } catch (ex) { toast("Could not delete: " + ex.message, "bad"); }
 }
 
 function renderList() {
@@ -204,7 +211,7 @@ function renderList() {
   const list = ctx.payments.filter((p) => !q || [p.receiptNo, p.studentName, p.parentName, p.phone, p.reference].join(" ").toLowerCase().includes(q));
   $("#rList", root).innerHTML = !ctx.loaded.payments ? `<div class="empty">Loading…</div>` : list.length ? `
     <div class="table-wrap"><table class="t">
-      <thead><tr><th>Receipt</th><th>Student</th><th>For</th><th>Paid by</th><th class="num">Amount</th></tr></thead>
+      <thead><tr><th>Receipt</th><th>Student</th><th>For</th><th>Paid by</th><th class="num">Amount</th>${ctx.isAdmin ? "<th></th>" : ""}</tr></thead>
       <tbody>${list.slice(0, 300).map((p) => `
         <tr class="clickable ${p.id === st.shownId ? "sel" : ""}" data-id="${esc(p.id)}">
           <td><span class="strong">${esc(p.receiptNo)}</span><span class="sub">${esc(fmtDate(p.date))}</span></td>
@@ -212,6 +219,7 @@ function renderList() {
           <td>${esc(p.monthsLabel)}</td>
           <td>${esc(p.payMode)}<span class="sub">${esc(p.reference || "")}</span></td>
           <td class="num strong">${inr(p.amount)}</td>
+          ${ctx.isAdmin ? `<td><button class="btn btn-danger btn-sm" type="button" data-del="${esc(p.id)}" aria-label="Delete receipt ${esc(p.receiptNo)}">Delete</button></td>` : ""}
         </tr>`).join("")}</tbody></table></div>
       ${list.length > 300 ? `<p class="sub">Showing latest 300 of ${list.length}. Search to find older receipts.</p>` : ""}` : `<div class="empty">No receipts yet.</div>`;
 }

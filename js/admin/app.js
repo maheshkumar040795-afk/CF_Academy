@@ -29,8 +29,8 @@ const subs = new Set();
 const ctx = {
   user: null,
   role: null, isAdmin: false,
-  bookings: [], students: [], payments: [],
-  loaded: { bookings: false, students: false, payments: false },
+  bookings: [], students: [], payments: [], tutorPayouts: [],
+  loaded: { bookings: false, students: false, payments: false, tutorPayouts: false },
   tutors: null,
   async ensureTutors(force = false) {
     if (!ctx.tutors || force) {
@@ -55,7 +55,7 @@ function startData() {
     console.error(err);
     toast("Could not load data: " + (err.code === "permission-denied" ? "this account is not an admin (check Firestore rules)." : err.message), "bad");
   };
-  ["bookings", "students", "payments"].forEach((col) => {
+  ["bookings", "students", "payments", "tutorPayouts"].forEach((col) => {
     watch(col, (rows) => {
       if (col === "bookings") notifyNew(rows);
       ctx[col] = rows;
@@ -68,7 +68,7 @@ function startData() {
 function stopData() {
   unsubs.forEach((u) => u && u());
   unsubs = [];
-  ctx.bookings = []; ctx.students = []; ctx.payments = []; ctx.tutors = null;
+  ctx.bookings = []; ctx.students = []; ctx.payments = []; ctx.tutorPayouts = []; ctx.tutors = null;
   seenBookings = null;
 }
 

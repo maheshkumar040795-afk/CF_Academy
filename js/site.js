@@ -1,8 +1,8 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610131930";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610131930";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610131930";
-import { cld } from "./cloudinary.js?v=202610131930";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610141500";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610141500";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610141500";
+import { cld } from "./cloudinary.js?v=202610141500";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -31,8 +31,14 @@ function currentMode() { return $('input[name="mode"]:checked').value; }
 function syncMode() {
   const home = currentMode() === "Home tuition";
   $("#areaReq").style.display = home ? "" : "none";
-  $("#addressField").style.display = home ? "" : "none";
 }
+// Class is optional when only a competitive exam is chosen
+function syncClassReq() {
+  const examOnly = chipValues($("#examChips")).length > 0 && chipValues($("#subjectChips")).length === 0;
+  $("#classReq").style.display = examOnly ? "none" : "";
+  return !examOnly;
+}
+const pickedSubjects = () => [...chipValues($("#subjectChips")), ...chipValues($("#examChips"))];
 
 function normPhone(p) {
   let d = String(p == null ? "" : p).replace(/\D/g, "");
@@ -49,14 +55,11 @@ function validate() {
     if (bad) ok = false;
   };
   mark("studentName", !$("#studentName").value.trim());
-  mark("studentClass", !$("#studentClass").value);
-  mark("subjects", chipValues($("#subjectChips")).length === 0);
+  mark("studentClass", syncClassReq() && !$("#studentClass").value);
+  mark("subjects", pickedSubjects().length === 0);
   mark("area", currentMode() === "Home tuition" && !$("#area").value.trim());
-  mark("city", !$("#city").value);
   mark("parentName", !$("#parentName").value.trim());
   mark("phone", !/^[6-9]\d{9}$/.test(normPhone($("#phone").value)));
-  const em = $("#email").value.trim();
-  mark("email", !!em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em));
   if (!ok) {
     const first = $(".f.invalid");
     first && first.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -74,16 +77,13 @@ function readForm() {
     studentName: v("studentName"),
     studentClass: v("studentClass"),
     board: v("board"),
-    subjects: chipValues($("#subjectChips")).join(", "),
+    subjects: pickedSubjects().join(", "),
     area: v("area"),
-    city: v("city"),
-    address: currentMode() === "Home tuition" ? v("address") : "",
     days: chipValues($("#dayChips")).join(", "),
     time: v("time"),
     startDate: v("startDate"),
     parentName: v("parentName"),
     phone: normPhone(v("phone")),
-    email: v("email"),
     notes: v("notes")
   };
 }
@@ -100,16 +100,14 @@ function whatsappText(b) {
     "",
     `*Booking ID:* ${b.bookingNo}`,
     `*Tuition type:* ${b.mode}`,
-    `*Student:* ${b.studentName} (${b.studentClass}${b.board ? ", " + b.board : ""})`,
-    `*Subjects:* ${b.subjects}`,
-    `*Location:* ${[b.area, b.city].filter(Boolean).join(", ")}`
+    `*Student:* ${b.studentName}${b.studentClass || b.board ? ` (${[b.studentClass, b.board].filter(Boolean).join(", ")})` : ""}`,
+    `*Subjects / exam:* ${b.subjects}`
   ];
-  if (b.address) lines.push(`*Address:* ${b.address}`);
+  if (b.area) lines.push(`*Location:* ${b.area}`);
   if (b.days) lines.push(`*Preferred days:* ${b.days}`);
   if (b.time) lines.push(`*Preferred time:* ${b.time}`);
   if (b.startDate) lines.push(`*Start from:* ${fmtDate(b.startDate)}`);
   lines.push(`*Parent:* ${b.parentName}`, `*Mobile:* ${b.phone}`);
-  if (b.email) lines.push(`*Email:* ${b.email}`);
   if (b.notes) lines.push(`*Notes:* ${b.notes}`);
   return lines.join("\n");
 }
@@ -147,8 +145,9 @@ async function onSubmit(e) {
 
 function resetForm() {
   form().reset();
-  $("#city").value = "Chennai";
   setChips($("#subjectChips"), []);
+  setChips($("#examChips"), []);
+  syncClassReq();
   setChips($("#dayChips"), []);
   $$(".f.invalid").forEach((f) => f.classList.remove("invalid"));
   syncMode();
@@ -171,13 +170,12 @@ function initQuick() {
     if (r) r.checked = true;
     syncMode();
     const subj = $("#qSubject").value;
-    if (subj) setChips($("#subjectChips"), [subj]);
+    if (SUBJECTS.includes(subj)) setChips($("#subjectChips"), [subj]);
+    else if (EXAMS.includes(subj)) setChips($("#examChips"), [subj]);
+    syncClassReq();
     if ($("#qClass").value) $("#studentClass").value = $("#qClass").value;
     const area = $("#qArea").value.trim();
-    if (area) {
-      const city = CITIES.find((c) => c.toLowerCase() === area.toLowerCase());
-      if (city) $("#city").value = city; else $("#area").value = area;
-    }
+    if (area) $("#area").value = area;
     $("#book").scrollIntoView({ behavior: "smooth" });
     setTimeout(() => $("#studentName").focus({ preventScroll: true }), 600);
   });
@@ -220,6 +218,7 @@ function renderPrograms() {
     if (p.subject) setChips($("#subjectChips"), [p.subject]);
     if (p.note && !$("#notes").value) $("#notes").value = p.note;
     $$(".f.invalid").forEach((f) => f.classList.remove("invalid"));
+    if (p.exam) { $("#examLbl").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
     $("#book").scrollIntoView({ behavior: "smooth" });
     setTimeout(() => $("#studentName").focus({ preventScroll: true }), 600);
   });
@@ -231,7 +230,8 @@ function prefillBooking(it, mode) {
   if (it.cls) $("#studentClass").value = it.cls;
   if (it.board) $("#board").value = it.board;
   if (it.subject && SUBJECTS.includes(it.subject)) setChips($("#subjectChips"), [it.subject]);
-  const note = it.note || (!it.cls && !it.subject && !it.board ? it.label : "");
+  if (it.exam && EXAMS.includes(it.exam)) { setChips($("#examChips"), [it.exam]); syncClassReq(); }
+  const note = it.note || (!it.cls && !it.subject && !it.board && !it.exam ? it.label : "");
   if (!note && !it.subject) $("#notes").value = $("#notes").value.replace(/^Interested in: .*$/, "");
   if (note) $("#notes").value = "Interested in: " + note;
   $$(".f.invalid").forEach((f) => f.classList.remove("invalid"));
@@ -269,6 +269,12 @@ function initExplore() {
     prefillBooking(it, it.mode || cat.mode);
   });
   show(0);
+  // "See all exams / courses" buttons on the service cards open the matching tab
+  $$("[data-explore]").forEach((b) => b.addEventListener("click", () => {
+    const i = CATEGORIES.findIndex((c) => c.tab === b.dataset.explore);
+    if (i >= 0) show(i);
+    $("#explore").scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
 }
 
 // ── Meet our tutors (cards managed in Admin → Website Tutors) ──
@@ -356,14 +362,14 @@ function init() {
   renderPrograms();
   initExplore();
 
-  fillSelect($("#qSubject"), SUBJECTS, "Select");
+  $("#qSubject").innerHTML = `<option value="">Select</option><optgroup label="School subjects">${SUBJECTS.map((v) => `<option>${v}</option>`).join("")}</optgroup><optgroup label="Competitive exams">${EXAMS.map((v) => `<option>${v}</option>`).join("")}</optgroup>`;
   fillSelect($("#qClass"), CLASSES, "Select");
   fillSelect($("#studentClass"), CLASSES, "Choose class");
   fillSelect($("#board"), BOARDS, "Choose board");
-  fillSelect($("#city"), CITIES, "Choose city");
-  $("#city").value = "Chennai";
   fillSelect($("#time"), TIME_SLOTS, "Choose time");
   makeChips($("#subjectChips"), SUBJECTS);
+  makeChips($("#examChips"), EXAMS);
+  [$("#subjectChips"), $("#examChips")].forEach((box) => box.addEventListener("click", syncClassReq));
   makeChips($("#dayChips"), DAYS);
 
   const today = new Date();

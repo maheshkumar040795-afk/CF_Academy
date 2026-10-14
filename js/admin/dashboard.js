@@ -1,6 +1,6 @@
 // Dashboard — today at a glance
 import { $, esc, fmtDateTime, fmtPhone, inr, monthKey, monthLabel, ICONS } from "./ui.js";
-import { statusPill, isOverdue, feeFor } from "./common.js";
+import { statusPill, isOverdue, feeFor, feeDue } from "./common.js";
 
 let root, ctx;
 
@@ -33,12 +33,19 @@ function refresh() {
   const collected = ctx.payments.filter((p) => (p.date || "").slice(0, 7) === mk).reduce((a, p) => a + (Number(p.amount) || 0), 0);
   const dues = active.map((s) => feeFor(s, ctx.payments, mk)).filter((f) => f.balance > 0);
   const dueAmt = dues.reduce((a, f) => a + f.balance, 0);
+  const admittedAt = (s) => s.createdAt || (s.joinDate ? new Date(s.joinDate + "T00:00").getTime() : 0);
+  const newStudents = ctx.students.filter((s) => admittedAt(s) && monthKey(new Date(admittedAt(s))) === mk);
+  const newDirect = newStudents.filter((s) => !s.bookingId).length;
+  const feeStates = active.map((s) => feeDue(s, ctx.payments));
+  const dueSoon = feeStates.filter((d) => d.kind === "soon" || d.kind === "today").length;
+  const overdueFees = feeStates.filter((d) => d.kind === "late").length;
 
   $("#dStats", root).innerHTML = `
     <div class="stat"><span>New bookings today</span><b>${todays}</b></div>
     <div class="stat ${fresh.length ? "warn" : ""}"><span>Waiting for a call</span><b>${fresh.length}</b></div>
     <div class="stat ${overdue.length ? "bad" : ""}"><span>Not called in 2 hours</span><b>${overdue.length}</b></div>
     <div class="stat"><span>Active students</span><b>${active.length}</b></div>
+    <div class="stat good"><span>New students · ${esc(monthLabel(mk).split(" ")[0])}</span><b>${newStudents.length}</b><span>${newDirect} direct · ${newStudents.length - newDirect} from bookings</span></div>
     <div class="stat good"><span>Collected · ${esc(monthLabel(mk).split(" ")[0])}</span><b>${inr(collected)}</b></div>
     <div class="stat"><span>Pending fees · ${esc(monthLabel(mk).split(" ")[0])}</span><b>${inr(dueAmt)}</b></div>
     <div class="stat"><span>Tutors</span><b>${ctx.tutors ? ctx.tutors.length : "…"}</b></div>`;
@@ -59,11 +66,13 @@ function refresh() {
     ...follow.map((b) => ({ t: `Follow up with <b>${esc(b.parentName)}</b> (${esc(b.subjects)})`, id: b.id, k: "p-demo", l: "Follow-up" })),
     ...noTutor.map((b) => ({ t: `Assign a tutor for <b>${esc(b.studentName || b.parentName)}</b> · ${esc(b.subjects)}`, id: b.id, k: "p-assigned", l: "Assign" }))
   ].slice(0, 10);
-  $("#dAttention", root).innerHTML = items.length ? items.map((i) => `
+  const html = items.map((i) => `
     <a href="#/bookings?id=${esc(i.id)}" style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-2);text-decoration:none;color:inherit">
       <span>${i.t}</span><span class="pill ${i.k}">${i.l}</span></a>`).join("") +
-    (dues.length ? `<a href="#/fees" style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;text-decoration:none;color:inherit"><span><b>${dues.length}</b> students have fees pending this month</span><span class="pill p-due">Fees</span></a>` : "")
-    : `<div class="note ok">All caught up. No pending calls or follow-ups.</div>`;
+    (dueSoon ? `<a href="#/students?fee=${encodeURIComponent("Due in 3 days")}" style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-2);text-decoration:none;color:inherit"><span><b>${dueSoon}</b> student fee${dueSoon === 1 ? " is" : "s are"} due in the next 3 days</span><span class="pill p-soon">Due soon</span></a>` : "") +
+    (overdueFees ? `<a href="#/students?fee=Overdue" style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-2);text-decoration:none;color:inherit"><span><b>${overdueFees}</b> student fee${overdueFees === 1 ? " is" : "s are"} overdue</span><span class="pill p-late">Overdue</span></a>` : "") +
+    (dues.length ? `<a href="#/fees" style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;text-decoration:none;color:inherit"><span><b>${dues.length}</b> students have fees pending this month</span><span class="pill p-due">Fees</span></a>` : "");
+  $("#dAttention", root).innerHTML = html || `<div class="note ok">All caught up. No pending calls or follow-ups.</div>`;
 }
 
 export default { deps: ["bookings", "students", "payments", "tutors"], render, refresh };

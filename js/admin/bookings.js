@@ -1,6 +1,6 @@
 // Bookings / Leads — live list, call-back, tutor allocation, convert to student
 import { put, remove, makeBookingNo } from "../db.js";
-import { SUBJECTS, CLASSES, BOARDS, CITIES, TIME_SLOTS, BOOKING_STATUSES } from "../site-config.js";
+import { SUBJECTS, EXAMS, CLASSES, BOARDS, CITIES, TIME_SLOTS, BOOKING_STATUSES } from "../site-config.js";
 import { $, $$, esc, fmtDateTime, fmtDate, fmtPhone, normPhone, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, ICONS } from "./ui.js";
 import { statusPill, isOverdue, matchTutors } from "./common.js";
 
@@ -259,7 +259,7 @@ function convertToStudent(b) {
         <div class="fld"><label>Student name</label><input name="name" value="${esc(b.studentName)}"></div>
         <div class="fld"><label>Parent name</label><input name="parentName" value="${esc(b.parentName)}"></div>
         <div class="fld"><label>Parent mobile</label><input name="phone" value="${esc(b.phone)}"></div>
-        <div class="fld"><label>Class</label><select name="studentClass">${options(CLASSES, b.studentClass)}</select></div>
+        <div class="fld"><label>Class</label><select name="studentClass">${options(CLASSES, b.studentClass, "—")}</select></div>
         <div class="fld"><label>Board</label><select name="board">${options(BOARDS, b.board, "—")}</select></div>
         <div class="fld"><label>Tuition type</label><select name="mode">${options(["Home tuition", "Online tuition"], b.mode)}</select></div>
         <div class="fld full"><label>Subjects</label><input name="subjects" value="${esc(b.subjects)}"></div>
@@ -300,7 +300,7 @@ function addLead() {
         <div class="fld"><label>Class</label><select name="studentClass">${options(CLASSES, "", "—")}</select></div>
         <div class="fld"><label>Board</label><select name="board">${options(BOARDS, "", "—")}</select></div>
         <div class="fld"><label>Tuition type</label><select name="mode">${options(["Home tuition", "Online tuition"], "Home tuition")}</select></div>
-        <div class="fld full"><label>Subjects</label><input name="subjects" list="subjList" placeholder="e.g. Mathematics, Science"><datalist id="subjList">${SUBJECTS.map((s) => `<option value="${esc(s)}">`).join("")}</datalist></div>
+        <div class="fld full"><label>Subjects</label><input name="subjects" list="subjList" placeholder="e.g. Mathematics, Science or NEET"><datalist id="subjList">${[...SUBJECTS, ...EXAMS].map((s) => `<option value="${esc(s)}">`).join("")}</datalist></div>
         <div class="fld"><label>Area</label><input name="area"></div>
         <div class="fld"><label>City</label><select name="city">${options(CITIES, "Chennai")}</select></div>
         <div class="fld"><label>Preferred days</label><input name="days" placeholder="Mon, Wed, Fri"></div>
