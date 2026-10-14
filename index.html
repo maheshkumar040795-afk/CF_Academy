@@ -19,7 +19,7 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"></noscript>
-<link rel="stylesheet" href="css/site.css?v=202610141500">
+<link rel="stylesheet" href="css/site.css?v=202610141700">
 <link rel="preload" as="image" href="assets/hero-student-800.webp" imagesrcset="assets/hero-student-800.webp 800w, assets/hero-student.webp 1400w" imagesizes="(max-width: 960px) 100vw, 560px" fetchpriority="high">
 <script type="application/ld+json">
 {
@@ -59,12 +59,14 @@ if (location.protocol === "file:") {
     </a>
     <button class="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav"><span></span></button>
     <nav class="nav" id="nav" aria-label="Main">
+      <a class="nav-home" href="#top">Home</a>
       <a href="#services">Services</a>
       <a href="#explore">Courses</a>
       <a href="#tutors">Tutors</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
       <a class="btn btn-accent" href="#book">Book a Tutor</a>
+      <a class="nav-admin" href="admin.html" title="Admin login" aria-label="Admin login"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg><span>Admin login</span></a>
     </nav>
   </div>
 </header>
@@ -157,7 +159,7 @@ if (location.protocol === "file:") {
         <p>One-to-one attention from an experienced tutor, at home or online, for school subjects, competitive exams and IT courses.</p>
       </div>
       <div class="grid-4" data-stagger>
-        <article class="card service-card featured reveal">
+        <article class="card service-card reveal">
           <div class="icon-badge accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg></div>
           <h3>Home Tuition</h3>
           <p>A verified tutor comes to your home on the days and time you choose.</p>
@@ -166,6 +168,7 @@ if (location.protocol === "file:") {
             <li>One-to-one or siblings together</li>
             <li>Regular progress updates to parents</li>
           </ul>
+          <button type="button" class="svc-cta" data-mode-book="Home tuition">Book home tuition <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </article>
         <article class="card service-card reveal">
           <div class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
@@ -176,6 +179,7 @@ if (location.protocol === "file:") {
             <li>Flexible timings, including weekends</li>
             <li>Ideal for students outside Chennai</li>
           </ul>
+          <button type="button" class="svc-cta" data-mode-book="Online tuition">Book online tuition <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </article>
         <article class="card service-card reveal">
           <div class="icon-badge accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></div>
@@ -427,6 +431,6 @@ if (location.protocol === "file:") {
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script type="module" src="js/site.js?v=202610141500"></script>
+<script type="module" src="js/site.js?v=202610141700"></script>
 </body>
 </html>

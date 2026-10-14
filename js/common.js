@@ -1,7 +1,7 @@
 // CF Academy — shared website code (home, about, contact):
 // header + mobile menu, scroll progress, reveal-on-scroll, count-up numbers,
 // contact details from site-config, toast. Page scripts import the helpers.
-import { SITE } from "./site-config.js?v=202610141500";
+import { SITE } from "./site-config.js?v=202610141700";
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];

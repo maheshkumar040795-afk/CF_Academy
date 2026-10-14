@@ -1,8 +1,8 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610141500";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610141500";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610141500";
-import { cld } from "./cloudinary.js?v=202610141500";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610141700";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610141700";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610141700";
+import { cld } from "./cloudinary.js?v=202610141700";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -270,6 +270,13 @@ function initExplore() {
   });
   show(0);
   // "See all exams / courses" buttons on the service cards open the matching tab
+  // "Book home / online tuition" on the service cards pick the tuition type
+  $$("[data-mode-book]").forEach((b) => b.addEventListener("click", () => {
+    const r = $(`input[name="mode"][value="${b.dataset.modeBook}"]`);
+    if (r) { r.checked = true; syncMode(); }
+    $("#book").scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => $("#studentName").focus({ preventScroll: true }), 600);
+  }));
   $$("[data-explore]").forEach((b) => b.addEventListener("click", () => {
     const i = CATEGORIES.findIndex((c) => c.tab === b.dataset.explore);
     if (i >= 0) show(i);
@@ -283,15 +290,23 @@ function renderTutors(list) {
   const sec = $("#tutors"), box = $("#tutorList");
   if (!sec || !box) return;
   if (!list.length) { sec.hidden = true; return; }
-  box.innerHTML = list.map((t) => `
-    <article class="tutor reveal">
+  const card = (t, hidden) => `
+    <article class="tutor"${hidden ? ' aria-hidden="true"' : ""}>
       <div class="t-ph">${t.photo
         ? `<img src="${escAttr(cld(t.photo, 200))}" alt="${escAttr(t.name)}" width="96" height="96" loading="lazy" decoding="async">`
         : `<span class="t-in" aria-hidden="true">${escAttr(initials(t.name))}</span>`}</div>
       <b>${escAttr(t.name)}</b>
       ${t.experience ? `<span class="t-exp">${escAttr(/exp/i.test(t.experience) ? t.experience : t.experience + " experience")}</span>` : ""}
       ${t.subject ? `<span class="t-sub">${escAttr(t.subject)}</span>` : ""}
-    </article>`).join("");
+    </article>`;
+  // Train: one set is repeated until it is wider than a big screen, then doubled so the
+  // loop (translateX -50% → 0, i.e. left to right) is seamless. Pauses on hover / touch.
+  const reps = Math.max(1, Math.ceil(2000 / (list.length * 240)));
+  const set = Array.from({ length: reps }, (_, r) => list.map((t) => card(t, r > 0)).join("")).join("");
+  const copy = Array.from({ length: reps }, () => list.map((t) => card(t, true)).join("")).join("");
+  box.innerHTML = `<div class="t-track" style="--dur:${Math.max(20, list.length * reps * 4)}s">${set}${copy}</div>`;
+  box.classList.add("train");
+  box.removeAttribute("data-stagger");
   sec.hidden = false;
   reveal($$(".reveal", sec));
 }
@@ -325,14 +340,13 @@ function buildBanners(list) {
   if (list.length === 1) { slider.classList.add("single"); return; }
 
   let idx = 0, timer = null;
-  const reduce = reduceMotion;
   const go = (n) => {
     idx = (n + list.length) % list.length;
     track.style.transform = `translateX(-${idx * 100}%)`;
     $$("button", dots).forEach((d, i) => d.setAttribute("aria-current", String(i === idx)));
   };
   const stop = () => { clearInterval(timer); timer = null; };
-  const start = () => { if (!reduce && !timer) timer = setInterval(() => go(idx + 1), 5000); };
+  const start = () => { if (!timer) timer = setInterval(() => go(idx + 1), 3000); }; // auto-slide every 3 s
   $(".sl-prev", slider).addEventListener("click", () => { go(idx - 1); stop(); start(); });
   $(".sl-next", slider).addEventListener("click", () => { go(idx + 1); stop(); start(); });
   dots.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; go([...dots.children].indexOf(b)); stop(); start(); });
