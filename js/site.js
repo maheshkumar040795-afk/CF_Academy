@@ -1,8 +1,8 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610142000";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610142000";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610142000";
-import { cld } from "./cloudinary.js?v=202610142000";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610142100";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610142100";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610142100";
+import { cld } from "./cloudinary.js?v=202610142100";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -331,16 +331,16 @@ function buildBanners(list) {
   track.innerHTML = list.map((b, i) => {
     const safeLink = b.link === "#book" || /^https?:\/\//i.test(b.link || "") ? b.link : "";
     const ext = /^https?:/i.test(safeLink);
-    const set = /res\.cloudinary\.com/.test(b.image) ? ` srcset="${escAttr(cld(b.image, 880))} 880w, ${escAttr(cld(b.image, 1400))} 1400w, ${escAttr(cld(b.image, 1756))} 1756w" sizes="(max-width: 1240px) 100vw, 1160px"` : "";
-    const img = `<img src="${escAttr(cld(b.image, 1756))}"${set} alt="${escAttr(b.title)}" width="${Number(b.width) || 1756}" height="${Number(b.height) || 450}" ${i ? 'loading="lazy"' : ""} decoding="async" draggable="false">`;
+    const set = /res\.cloudinary\.com/.test(b.image) ? ` srcset="${escAttr(cld(b.image, 880))} 880w, ${escAttr(cld(b.image, 1400))} 1400w, ${escAttr(cld(b.image, 1756))} 1756w, ${escAttr(cld(b.image, 2083))} 2083w" sizes="(max-width: 1240px) 100vw, 1160px"` : "";
+    const img = `<img src="${escAttr(cld(b.image, 2083))}"${set} alt="${escAttr(b.title)}" width="${Number(b.width) || 2083}" height="${Number(b.height) || 755}" ${i ? 'loading="lazy"' : ""} decoding="async" draggable="false">`;
     return `<div class="slide" role="group" aria-roledescription="slide" aria-label="${i + 1} of ${list.length}">${safeLink ? `<a href="${escAttr(safeLink)}" ${ext ? 'target="_blank" rel="noopener"' : ""}>${img}</a>` : img}</div>`;
   }).join("");
   // The banner box takes the shape of the first slide as uploaded (no cropping);
   // slides with a different shape are shown whole inside it.
-  const w0 = Number(list[0].width) || 1756, h0 = Number(list[0].height) || 450;
+  const w0 = Number(list[0].width) || 2083, h0 = Number(list[0].height) || 755;
   slider.style.aspectRatio = `${w0} / ${h0}`;
   list.forEach((b, i) => {
-    const r = (Number(b.width) || 1756) / (Number(b.height) || 450);
+    const r = (Number(b.width) || 2083) / (Number(b.height) || 755);
     if (Math.abs(r - w0 / h0) > 0.02) track.children[i].classList.add("fit");
   });
   dots.innerHTML = list.map((b, i) => `<button type="button" aria-label="Show slide ${i + 1}"></button>`).join("");

@@ -191,7 +191,7 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 .bn-drop canvas { width: 100%; height: auto; border-radius: 6px; display: block; }
 .bn-item { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 12px; background: #fff; }
 .bn-item.off img { opacity: .45; filter: grayscale(.6); }
-.bn-item img { display: block; width: 100%; height: auto; aspect-ratio: 1756 / 450; object-fit: cover; background: var(--bg); }
+.bn-item img { display: block; width: 100%; height: auto; aspect-ratio: 2083 / 755; object-fit: cover; background: var(--bg); }
 .bn-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; }
 .bn-meta b { color: var(--navy); }
 .bn-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
