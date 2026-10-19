@@ -1,7 +1,7 @@
 // CF Academy — shared website code (home, about, contact):
 // header + mobile menu, scroll progress, reveal-on-scroll, count-up numbers,
 // contact details from site-config, toast. Page scripts import the helpers.
-import { SITE } from "./site-config.js?v=202610192100";
+import { SITE } from "./site-config.js?v=202610192200";
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -112,7 +112,9 @@ function initContact() {
       const p = k === "tel1" ? p1 : p2;
       el.href = "tel:+91" + p;
       // replace a plain number shown as the link text (keeps "Call …" style labels)
-      if (/^\s*(call\s+)?[\d\s]{10,12}\s*$/i.test(el.textContent)) el.textContent = el.textContent.replace(/\d[\d\s]{9,11}\s*$/, fmtTel(p));
+      // update only the text (keeps any icon inside the link)
+      const tn = [...el.childNodes].reverse().find((n) => n.nodeType === 3 && /\d{5}/.test(n.nodeValue));
+      if (tn && /^\s*(call\s+)?[\d\s]{10,12}\s*$/i.test(tn.nodeValue)) tn.nodeValue = tn.nodeValue.replace(/\d[\d\s]{9,11}\s*$/, fmtTel(p));
     }
     if (k === "wa" && SITE.whatsapp) el.href = "https://wa.me/" + SITE.whatsapp;
     if (k === "wa-float" && SITE.whatsapp) el.href = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hello CF Academy, I need a tutor for my child.")}`;

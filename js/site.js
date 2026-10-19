@@ -1,8 +1,8 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610192100";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610192100";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610192100";
-import { cld } from "./cloudinary.js?v=202610192100";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610192200";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610192200";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610192200";
+import { cld } from "./cloudinary.js?v=202610192200";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -158,6 +158,7 @@ function resetForm() {
 
 // ── Quick search card in hero → prefill booking form ──
 function initQuick() {
+  if (!$("#quickForm")) return;
   let qmode = "Home tuition";
   $$("[data-qmode]").forEach((b) => b.addEventListener("click", () => {
     qmode = b.dataset.qmode;
@@ -381,8 +382,8 @@ function init() {
   renderPrograms();
   initExplore();
 
-  $("#qSubject").innerHTML = `<option value="">Select</option><optgroup label="School subjects">${SUBJECTS.map((v) => `<option>${v}</option>`).join("")}</optgroup><optgroup label="Competitive exams">${EXAMS.map((v) => `<option>${v}</option>`).join("")}</optgroup>`;
-  fillSelect($("#qClass"), CLASSES, "Select");
+  if ($("#qSubject")) $("#qSubject").innerHTML = `<option value="">Select</option><optgroup label="School subjects">${SUBJECTS.map((v) => `<option>${v}</option>`).join("")}</optgroup><optgroup label="Competitive exams">${EXAMS.map((v) => `<option>${v}</option>`).join("")}</optgroup>`;
+  if ($("#qClass")) fillSelect($("#qClass"), CLASSES, "Select");
   fillSelect($("#studentClass"), CLASSES, "Choose class");
   fillSelect($("#board"), BOARDS, "Choose board");
   fillSelect($("#time"), TIME_SLOTS, "Choose time");
