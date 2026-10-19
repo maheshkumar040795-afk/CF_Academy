@@ -1,7 +1,7 @@
 /* CF Academy — admin panel */
 :root {
-  --navy: #0A2A66; --navy-2: #134E9C; --navy-soft: #E7EEF9;
-  --accent: #0B7A62; --accent-hover: #096651; --accent-light: #3FD1AE; --accent-soft: #E0F4EE;
+  --navy: #0B4F57; --navy-2: #087F8C; --navy-soft: #E3F3F4;
+  --accent: #087F8C; --accent-hover: #066A75; --accent-light: #F49E3C; --accent-soft: #FDF0E1;
   /* amber is used only for warnings (new / due / overdue soon) */
   --amber: #F2B33D; --amber-soft: #FDF1D6; --amber-ink: #7A4B00;
   --bg: #F5F7FB; --card: #FFFFFF; --ink: #1B2433; --muted: #4A5568; --line: #E2E8F0; --line-2: #EEF2F7;
@@ -19,7 +19,7 @@ button { font: inherit; }
 
 /* ── Login ── */
 .login { min-height: 100%; display: grid; place-items: center; padding: 24px; background: linear-gradient(160deg, #fff 0%, var(--bg) 60%); }
-.login-card { width: 100%; max-width: 400px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 32px; box-shadow: 0 20px 50px rgba(10, 42, 102, .08); }
+.login-card { width: 100%; max-width: 400px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 32px; box-shadow: 0 20px 50px rgba(11, 79, 87, .08); }
 .login-card .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
 .login-card .brand img { width: 64px; height: 64px; border-radius: 50%; }
 .login-card h1 { margin: 0; font-size: 20px; color: var(--navy); }
@@ -28,22 +28,22 @@ button { font: inherit; }
 
 /* ── Shell ── */
 .shell { display: flex; min-height: 100%; background: linear-gradient(to right, var(--navy) 240px, var(--bg) 240px); }
-.side { width: 240px; flex: none; background: var(--navy); color: #C9D6EA; display: flex; flex-direction: column; padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.side { width: 240px; flex: none; background: var(--navy); color: #CDE6E8; display: flex; flex-direction: column; padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .side .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 22px; color: #fff; text-decoration: none; }
 .side .brand img { width: 44px; height: 44px; border-radius: 50%; background: #fff; }
 .side .brand b { display: block; font-size: 15px; }
-.side .brand small { display: block; font-size: 11px; color: #9FB3D1; }
+.side .brand small { display: block; font-size: 11px; color: #A9D3D7; }
 .side nav { display: flex; flex-direction: column; gap: 4px; }
-.side nav a { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 9px; color: #C9D6EA; text-decoration: none; font-weight: 500; }
+.side nav a { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 9px; color: #CDE6E8; text-decoration: none; font-weight: 500; }
 .side nav a svg { width: 19px; height: 19px; flex: none; }
 .side nav a:hover { background: rgba(255, 255, 255, .06); color: #fff; }
 .side nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
 .side nav a .count { margin-left: auto; background: #B42318; color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
 .side nav a.active .count { background: var(--navy); }
-.side .foot { margin-top: auto; padding: 14px 6px 0; border-top: 1px solid #23406C; font-size: 12px; }
+.side .foot { margin-top: auto; padding: 14px 6px 0; border-top: 1px solid #14606A; font-size: 12px; }
 .side .foot b { display: block; color: #fff; font-weight: 500; word-break: break-all; }
 .side .foot .role-tag { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--accent-light); text-transform: uppercase; letter-spacing: .06em; }
-.side .foot button { margin-top: 8px; background: transparent; border: 1px solid #2B4C7E; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; width: 100%; }
+.side .foot button { margin-top: 8px; background: transparent; border: 1px solid #1C6E78; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; width: 100%; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar { display: none; }
 .view { padding: 26px 28px 60px; max-width: 1400px; width: 100%; }
@@ -115,7 +115,7 @@ table.t td { padding: 11px 12px; border-bottom: 1px solid var(--line-2); vertica
 table.t tr:last-child td { border-bottom: 0; }
 table.t tr.clickable { cursor: pointer; }
 table.t tr.clickable:hover td { background: #FAFBFD; }
-table.t tr.sel td { background: #EEF8F5; }
+table.t tr.sel td { background: #FEF6EC; }
 table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 .sub { display: block; font-size: 12px; color: var(--muted); }
 .strong { font-weight: 600; color: var(--navy); }
@@ -168,7 +168,7 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 .col-labels span { flex: 1; text-align: center; font-size: 11.5px; color: var(--muted); }
 
 /* ── Modal ── */
-.modal-bg { position: fixed; inset: 0; background: rgba(10, 42, 102, .45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; overflow-y: auto; }
+.modal-bg { position: fixed; inset: 0; background: rgba(11, 79, 87, .45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; overflow-y: auto; }
 .modal { width: 100%; max-width: 640px; background: #fff; border-radius: 16px; box-shadow: 0 30px 80px rgba(0, 0, 0, .25); }
 .modal.wide { max-width: 900px; }
 .modal-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
@@ -187,7 +187,7 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 
 /* ── Banners ── */
 .bn-drop { display: grid; place-items: center; text-align: center; min-height: 150px; border: 2px dashed #CBD5E1; border-radius: 12px; padding: 16px; cursor: pointer; background: var(--bg); transition: border-color .15s, background .15s; }
-.bn-drop:hover, .bn-drop.over { border-color: var(--accent); background: #F1FAF7; }
+.bn-drop:hover, .bn-drop.over { border-color: var(--accent); background: #FEF6EC; }
 .bn-drop canvas { width: 100%; height: auto; border-radius: 6px; display: block; }
 .bn-item { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 12px; background: #fff; }
 .bn-item.off img { opacity: .45; filter: grayscale(.6); }
@@ -234,7 +234,7 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 .receipt .rh .org { display: flex; align-items: center; gap: 12px; }
 .receipt .rh img { width: 58px; height: 58px; border-radius: 50%; background: #fff; }
 .receipt .rh b { font-size: 18px; display: block; }
-.receipt .rh small { color: #C9D6EA; font-size: 12px; }
+.receipt .rh small { color: #CDE6E8; font-size: 12px; }
 .receipt .rh .title { color: var(--accent-light); font-weight: 700; letter-spacing: .14em; font-size: 13px; }
 .receipt .rb { padding: 22px 24px; }
 .receipt .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px; font-size: 13.5px; margin-bottom: 16px; }
@@ -260,10 +260,10 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 @media (max-width: 860px) {
   .shell { flex-direction: column; background: var(--bg); }
   .side { position: fixed; left: 0; top: 0; bottom: 0; z-index: 90; transform: translateX(-100%); transition: transform .2s ease; height: 100%; }
-  .side.open { transform: none; box-shadow: 0 0 0 100vmax rgba(10, 42, 102, .4); }
+  .side.open { transform: none; box-shadow: 0 0 0 100vmax rgba(11, 79, 87, .4); }
   .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--navy); color: #fff; position: sticky; top: 0; z-index: 80; }
   .topbar b { font-size: 15px; }
-  .menu-toggle { display: inline-flex; background: transparent; border: 1px solid #2B4C7E; color: #fff; border-radius: 8px; width: 42px; height: 42px; align-items: center; justify-content: center; cursor: pointer; }
+  .menu-toggle { display: inline-flex; background: transparent; border: 1px solid #1C6E78; color: #fff; border-radius: 8px; width: 42px; height: 42px; align-items: center; justify-content: center; cursor: pointer; }
   .view { padding: 18px 14px 50px; }
   .form-grid { grid-template-columns: 1fr; }
   .grid2 { grid-template-columns: 1fr; }
@@ -281,13 +281,13 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 
 /* ── Welcome popup ── */
 .welcome { text-align: center; padding: 6px 4px 2px; }
-.welcome img { border-radius: 50%; box-shadow: 0 6px 20px rgba(10, 42, 102, .18); }
+.welcome img { border-radius: 50%; box-shadow: 0 6px 20px rgba(11, 79, 87, .18); }
 .w-greet { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
 .w-name { margin: 2px 0 8px; color: var(--navy); font-size: 26px; font-weight: 700; line-height: 1.2; }
 .role-pill { display: inline-block; padding: 3px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 
 /* ── Admin → website links ── */
-.side .site-link { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 12px; border-radius: 9px; border: 1px dashed #2B4C7E; color: #C9D6EA; text-decoration: none; font-weight: 500; }
+.side .site-link { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 12px; border-radius: 9px; border: 1px dashed #1C6E78; color: #CDE6E8; text-decoration: none; font-weight: 500; }
 .side .site-link svg { width: 19px; height: 19px; flex: none; }
 .side .site-link:hover { background: rgba(255, 255, 255, .06); color: #fff; }
 .top-site { margin-left: auto; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; border: 1px solid rgba(255,255,255,.3); color: #fff; }
@@ -348,3 +348,8 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
   .modal-bg { position: static; background: none; padding: 0; }
   .modal { box-shadow: none; }
 }
+
+/* ── Teal + Orange + White theme accents ── */
+.side nav a.active { background: #F49E3C; color: #1B2433; }
+.side .foot .role-tag { color: #F49E3C; }
+.role-pill { background: #FDF0E1; color: #9A4F00; }
