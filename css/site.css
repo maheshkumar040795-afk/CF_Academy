@@ -813,3 +813,18 @@ section.block.alt { background: var(--bg-2); }
   .h2-quote { width: auto; min-width: 0; max-width: none; transform: rotate(-1.5deg); border-radius: 28px 34px 26px 38px; }
   .q-mark { left: 8px; top: -14px; }
 }
+
+/* ── Hero photo: show the whole picture (soft rounded frame, no hard crop) ── */
+.h2-photo { width: 76%; aspect-ratio: auto; border-radius: 34% 40% 36% 42% / 30% 34% 38% 32%; background: #F6E6CB; }
+.h2-photo img { width: 100%; height: auto; object-fit: contain; object-position: center; }
+/* ── Quote card: keep every word and the underline inside the shape ── */
+.h2-quote { padding: 34px 30px 30px 32px; border-radius: 44px 58px 48px 62px / 52px 46px 60px 50px; }
+.h2-quote small { margin-top: 12px; }
+.h2-quote::after { width: 62%; height: 3px; margin: 12px 0 0 0; transform: rotate(-3deg); }
+.q-mark { left: -12px; top: -22px; }
+.q-mark.end { right: -10px; bottom: auto; top: 46%; }
+@media (max-width: 640px) { .h2-photo { width: 100%; border-radius: 28px 36px 30px 40px; } }
+@media (min-width: 961px) {
+  .h2-photo { width: 70%; }
+  .h2-quote { left: -2%; width: 33%; min-width: 225px; }
+}
