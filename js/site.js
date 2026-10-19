@@ -1,8 +1,8 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610192200";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610192200";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610192200";
-import { cld } from "./cloudinary.js?v=202610192200";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610192300";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610192300";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610192300";
+import { cld } from "./cloudinary.js?v=202610192300";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
