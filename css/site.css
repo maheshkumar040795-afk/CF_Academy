@@ -826,5 +826,5 @@ section.block.alt { background: var(--bg-2); }
 @media (max-width: 640px) { .h2-photo { width: 100%; border-radius: 28px 36px 30px 40px; } }
 @media (min-width: 961px) {
   .h2-photo { width: 70%; }
-  .h2-quote { left: -2%; width: 33%; min-width: 225px; }
+  .h2-quote { left: -3%; width: 35%; min-width: 245px; }
 }
