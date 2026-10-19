@@ -25,7 +25,7 @@ Stack: plain HTML/CSS/JavaScript (no build step) · Firebase Firestore + Auth ·
 | `js/contact.js` | Contact page: map + reviews |
 | `js/cloudinary.js` | Cloudinary uploads (admin) and fast resized image links (website) |
 | `js/admin/*.js` | Admin screens: dashboard, bookings, tutors, students, fees, receipts, reports |
-| `css/` | Styles (teal #087F8C · orange #F49E3C · white) |
+| `css/` | Styles (burgundy #5B2333 · champagne #D8A65D · ivory #FFF8F0) |
 | `assets/logo.png`, `logo-192.png`, `favicon.png` | Challenge Future Academy logo |
 | `firestore.rules` | Security rules (paste into Firebase) |
 | `apps-script/Code.gs` | Google Sheet + email script |
