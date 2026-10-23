@@ -860,9 +860,3 @@ section.block.alt { background: var(--bg-2); }
 .founder { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
 .founder .av.av-photo { flex: none; }
 .av-silhouette svg { width: 100%; height: 100%; border-radius: 50%; border: 3px solid #fff; display: block; }
-
-/* ── About page header: background video as a soft watermark ── */
-.page-hero.has-video { isolation: isolate; }
-.ph-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; opacity: .35; filter: saturate(.85); pointer-events: none; }
-.page-hero.has-video::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(91, 35, 51, .92) 0%, rgba(91, 35, 51, .72) 55%, rgba(91, 35, 51, .45) 100%); }
-.page-hero.has-video { background: var(--navy); }
