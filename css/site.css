@@ -851,3 +851,7 @@ section.block.alt { background: var(--bg-2); }
   .stat:nth-child(3), .stat:nth-child(5) { border-left: 0; }
   .stat-hl { grid-column: 1 / -1; order: -1; }
 }
+
+/* ── Header brand: champagne name, ivory tagline ── */
+.site-header .brand b { color: var(--accent-light); letter-spacing: .01em; }
+.site-header .brand small { color: #F3E6D2; }
