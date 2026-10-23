@@ -868,3 +868,25 @@ section.block.alt { background: var(--bg-2); }
   animation: phDrift 60s linear infinite; }
 @keyframes phDrift { from { background-position: 0 0; } to { background-position: -360px 240px; } }
 @media (prefers-reduced-motion: reduce) { .page-hero .ph-doodles { animation: none; } }
+
+/* ── Mobile fixes (real-phone check): proof line + quote card placement ── */
+@media (max-width: 960px) {
+  .h2-proof { display: flex; align-items: baseline; border-radius: 14px; padding: 10px 14px; }
+}
+@media (max-width: 640px) {
+  .h2-proof { display: block; font-size: 13.5px; line-height: 1.5; padding: 12px 16px; }
+  .h2-proof b { font-size: 20px; margin-right: 4px; }
+  .h2-proof em { font-size: 19px; white-space: nowrap; }
+  .h2-visual { display: flex; flex-direction: column; align-items: stretch; min-height: 0; margin-top: 12px; }
+  .h2-photo { width: 100%; order: 1; }
+  .h2-quote { order: 2; }
+  .h2-quote { position: relative; top: auto; left: auto; right: auto; bottom: auto; transform: rotate(-1.5deg);
+    width: auto; min-width: 0; max-width: none; margin: -28px 14px 0; padding: 26px 22px 22px; border-radius: 26px 32px 24px 34px; }
+  .h2-quote p { font-size: 16px; }
+  .q-mark { left: 8px; top: -16px; font-size: 56px; }
+  .q-mark.end { right: 10px; top: auto; bottom: 64px; font-size: 56px; }
+  .h2-badge { width: 88px; height: 88px; right: 8px; top: -14px; }
+  .h2-badge b { font-size: 21px; }
+  .h2-badge span { font-size: 10px; }
+  .hero2 > .wrap { padding-bottom: 56px; }
+}
