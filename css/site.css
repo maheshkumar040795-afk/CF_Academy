@@ -855,3 +855,8 @@ section.block.alt { background: var(--bg-2); }
 /* ── Header brand: champagne name, ivory tagline ── */
 .site-header .brand b { color: var(--accent-light); letter-spacing: .01em; }
 .site-header .brand small { color: #F3E6D2; }
+
+/* founder cards: same layout for both */
+.founder { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.founder .av.av-photo { flex: none; }
+.av-silhouette svg { width: 100%; height: 100%; border-radius: 50%; border: 3px solid #fff; display: block; }
