@@ -860,3 +860,11 @@ section.block.alt { background: var(--bg-2); }
 .founder { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
 .founder .av.av-photo { flex: none; }
 .av-silhouette svg { width: 100%; height: 100%; border-radius: 50%; border: 3px solid #fff; display: block; }
+
+/* ── About & Contact headers: learning doodles background ── */
+.page-hero .ph-doodles { position: absolute; inset: 0; pointer-events: none; opacity: .22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'%3E%3Cg fill='none' stroke='%23D8A65D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%0A%3Cpath d='M20 40h34a8 8 0 0 1 8 8v40a6 6 0 0 0-6-6H20z'/%3E%3Cpath d='M104 40H70a8 8 0 0 0-8 8v40a6 6 0 0 1 6-6h36z'/%3E%0A%3Cpath d='M150 20l40 18-40 18-40-18z'/%3E%3Cpath d='M126 46v16c0 6 11 11 24 11s24-5 24-11V46'/%3E%3Cpath d='M190 38v20'/%3E%0A%3Cpath d='M240 30l42 42-10 3 3-10z'/%3E%3Cpath d='M234 24l6 6'/%3E%0A%3Ccircle cx='320' cy='44' r='14'/%3E%3Cpath d='M313 70h14M315 76h10M320 30v-6M302 44h-6M344 44h-6'/%3E%0A%3Cpath d='M22 150l60-14 4 16-60 14z'/%3E%3Cpath d='M34 147l2 7M46 144l2 7M58 141l2 7M70 138l2 7'/%3E%0A%3Ccircle cx='150' cy='160' r='22'/%3E%3Cpath d='M128 160h44M150 138c8 8 8 36 0 44M150 138c-8 8-8 36 0 44'/%3E%0A%3Cpath d='M222 140h40v40h-40z'/%3E%3Cpath d='M222 152h40M234 140v40'/%3E%0A%3Cpath d='M300 150l10 10 20-24'/%3E%0A%3C/g%3E%3Cg fill='%23D8A65D' font-family='Georgia,serif' font-size='22' font-weight='700'%3E%3Ctext x='206' y='110'%3EA%2B%3C/text%3E%3Ctext x='300' y='120'%3E%CF%80%3C/text%3E%3Ctext x='70' y='215'%3E%E2%88%9Ax%3C/text%3E%3Ctext x='240' y='222'%3Eabc%3C/text%3E%3Ctext x='160' y='225'%3E%E2%88%91%3C/text%3E%3C/g%3E%3C/svg%3E"); background-size: 360px 240px; background-repeat: repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 35%, #000 70%); mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 35%, #000 70%);
+  animation: phDrift 60s linear infinite; }
+@keyframes phDrift { from { background-position: 0 0; } to { background-position: -360px 240px; } }
+@media (prefers-reduced-motion: reduce) { .page-hero .ph-doodles { animation: none; } }
