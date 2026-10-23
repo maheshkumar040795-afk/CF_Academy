@@ -18,7 +18,7 @@ export const firebaseConfig = {
 // emails here AND in firestore.rules (isOwner).
 export const OWNER_EMAILS = [
   "cfacademyadmin@gmail.com",
-  "owner2@example.com"    // TODO: e.g. V. Akshya's login email
+  "owner2@example.com"    // TODO: e.g. V. Akshaya's login email
 ];
 
 // Google Apps Script web app URL that appends each booking to the

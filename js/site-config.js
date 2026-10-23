@@ -9,9 +9,10 @@ export const SITE = {
   since: 2010,
   experience: "17+",
   faculty: "850+",
+  studentsBenefited: "3700+",
   founders: [
-    { name: "R. Nirmal", qual: "M.E.", role: "Founder" },
-    { name: "V. Akshya", qual: "MSE", role: "Founder" }
+    { name: "R. Nirmal", qual: "M.E.", role: "Founder & Director", photo: "https://res.cloudinary.com/u3hhrbtz/image/upload/v1792758640/Professional_Indian_Corporate_Headshot.png" },
+    { name: "V. Akshaya", qual: "M.Sc.", role: "Co-Director" }
   ],
   phones: ["8190870673", "8072135956"],
   // WhatsApp number that receives booking drafts (country code + number)
