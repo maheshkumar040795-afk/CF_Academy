@@ -890,3 +890,52 @@ section.block.alt { background: var(--bg-2); }
   .h2-badge span { font-size: 10px; }
   .hero2 > .wrap { padding-bottom: 56px; }
 }
+
+/* ═════════ Premium glow effects ═════════ */
+/* 1. Header logo + name */
+.site-header .brand img { box-shadow: 0 0 0 2px #D8A65D, 0 0 14px 2px rgba(216, 166, 93, .55); animation: logoGlow 3.2s ease-in-out infinite; }
+@keyframes logoGlow {
+  0%, 100% { box-shadow: 0 0 0 2px #D8A65D, 0 0 10px 1px rgba(216, 166, 93, .35); }
+  50% { box-shadow: 0 0 0 2px #F3D9A4, 0 0 22px 6px rgba(243, 217, 164, .6); }
+}
+.site-header .brand b {
+  background: linear-gradient(100deg, #C9944A 0%, #F6DFA9 25%, #D8A65D 45%, #FFF1CF 55%, #D8A65D 70%, #C9944A 100%);
+  background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 6px rgba(246, 223, 169, .35)); animation: goldShine 4.5s linear infinite;
+}
+.site-header .brand small { color: #F3E6D2; text-shadow: 0 0 8px rgba(243, 217, 164, .25); }
+@keyframes goldShine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+/* 2. Quote card: gentle float with a soft "wiggle" every few seconds */
+.h2-quote { animation: quoteFloat 6s ease-in-out infinite; transform-origin: 50% 60%; }
+@keyframes quoteFloat {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  8% { rotate: -1.6deg; } 12% { rotate: 1.6deg; } 16% { rotate: -1deg; } 20% { rotate: .6deg; } 24% { rotate: 0deg; }
+  50% { translate: 0 -8px; }
+}
+.h2-quote em { animation: quoteGlow 3s ease-in-out infinite; }
+@keyframes quoteGlow { 0%, 100% { text-shadow: none; } 50% { text-shadow: 0 0 12px rgba(122, 48, 69, .25); } }
+
+/* 3. "Powered by IAS / IES / IIT Alumni" badge */
+.hero2 .eyebrow {
+  position: relative; overflow: hidden; background: linear-gradient(135deg, #5B2333, #7A3045); color: #F6DFA9;
+  border: 1px solid rgba(216, 166, 93, .7); box-shadow: 0 0 0 3px rgba(216, 166, 93, .15), 0 8px 22px rgba(91, 35, 51, .25), 0 0 18px rgba(216, 166, 93, .35);
+  animation: badgeGlow 3s ease-in-out infinite; text-shadow: 0 0 8px rgba(246, 223, 169, .45);
+}
+.hero2 .eyebrow svg { color: #F6DFA9; filter: drop-shadow(0 0 4px rgba(246, 223, 169, .6)); }
+.hero2 .eyebrow::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255, 241, 207, .45), transparent); transform: skewX(-20deg); animation: badgeSweep 3.6s ease-in-out infinite; }
+@keyframes badgeGlow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(216, 166, 93, .12), 0 8px 22px rgba(91, 35, 51, .22), 0 0 12px rgba(216, 166, 93, .25); }
+  50% { box-shadow: 0 0 0 4px rgba(216, 166, 93, .22), 0 8px 22px rgba(91, 35, 51, .28), 0 0 26px rgba(246, 223, 169, .55); }
+}
+@keyframes badgeSweep { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+
+/* these effects stay on for everyone (brand request) */
+@media (prefers-reduced-motion: reduce) {
+  .site-header .brand img { animation: logoGlow 3.2s ease-in-out infinite !important; }
+  .site-header .brand b { animation: goldShine 4.5s linear infinite !important; }
+  .h2-quote { animation: quoteFloat 6s ease-in-out infinite !important; }
+  .hero2 .eyebrow { animation: badgeGlow 3s ease-in-out infinite !important; }
+  .hero2 .eyebrow::after { animation: badgeSweep 3.6s ease-in-out infinite !important; }
+}
