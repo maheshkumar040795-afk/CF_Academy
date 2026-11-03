@@ -1,28 +1,39 @@
 // Reports — bookings, conversion, collections, tutor-wise students
-import { $, esc, inr, exportXlsx, monthKey, monthLabel, lastMonths, todayISO, ICONS } from "./ui.js";
-import { canonSubjects } from "./common.js";
+import { $, esc, inr, toast, exportXlsx, monthKey, monthLabel, lastMonths, todayISO, rangeLabel, rangeFileTag, inRangeMs, monthsInRange, ICONS } from "./ui.js";
+import { canonSubjects, monthlyTotal } from "./common.js";
 import { BOOKING_STATUSES } from "../site-config.js";
 
-const st = { range: "6" };
+const st = { range: "6", from: "", to: "" };
 let root, ctx;
 
 function inRange(ms) {
   if (st.range === "all") return true;
+  if (st.range === "custom") return inRangeMs(ms, { from: st.from, to: st.to });
   const months = Number(st.range);
   const d = new Date();
   const start = new Date(d.getFullYear(), d.getMonth() - (months - 1), 1).getTime();
   return (ms || 0) >= start;
+}
+function periodText() {
+  if (st.range === "custom") return rangeLabel({ from: st.from, to: st.to });
+  return { "1": "This month", "3": "Last 3 months", "6": "Last 6 months", "12": "Last 12 months", all: "All time" }[st.range];
+}
+function chartMonths() {
+  if (st.range === "custom") return monthsInRange({ from: st.from, to: st.to }, 24);
+  return lastMonths(st.range === "all" ? 12 : Math.max(Number(st.range), 3));
 }
 
 function render(view, c) {
   root = view; ctx = c;
   view.innerHTML = `
     <div class="page-head">
-      <div><h1>Reports</h1><p>Live numbers from bookings, students and payments.</p></div>
+      <div><h1>Reports</h1><p>Live numbers from bookings, students and payments.</p><p class="sub" id="rpPeriod" style="margin-top:4px"></p></div>
       <div class="actions">
         <div class="fld" style="min-width:170px"><label for="rRange">Period</label><select id="rRange">
-          <option value="1">This month</option><option value="3">Last 3 months</option><option value="6">Last 6 months</option><option value="12">Last 12 months</option><option value="all">All time</option>
+          <option value="1">This month</option><option value="3">Last 3 months</option><option value="6">Last 6 months</option><option value="12">Last 12 months</option><option value="all">All time</option><option value="custom">Custom dates…</option>
         </select></div>
+        <div class="fld" id="rCustomF" hidden><label for="rFrom">From date</label><input id="rFrom" type="date" value="${esc(st.from)}"></div>
+        <div class="fld" id="rCustomT" hidden><label for="rTo">To date</label><input id="rTo" type="date" value="${esc(st.to)}"></div>
         <button class="btn btn-ghost" id="rpExport" style="align-self:flex-end">${ICONS.download}Download Excel</button>
         <button class="btn btn-ghost" id="rpPrint" style="align-self:flex-end">${ICONS.print}Print</button>
       </div>
@@ -30,7 +41,25 @@ function render(view, c) {
     <div class="stats" id="rpStats"></div>
     <div class="grid2" id="rpGrid"></div>`;
   $("#rRange", view).value = st.range;
-  $("#rRange", view).addEventListener("change", (e) => { st.range = e.target.value; refresh(); });
+  const showCustom = () => { $("#rCustomF", view).hidden = $("#rCustomT", view).hidden = st.range !== "custom"; };
+  $("#rRange", view).addEventListener("change", (e) => {
+    st.range = e.target.value;
+    if (st.range === "custom" && !st.from && !st.to) {
+      const d = new Date();
+      const iso = (x) => new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      st.from = iso(new Date(d.getFullYear(), d.getMonth(), 1)); st.to = todayISO();
+      $("#rFrom", view).value = st.from; $("#rTo", view).value = st.to;
+    }
+    showCustom(); refresh();
+  });
+  const onDate = () => {
+    const f = $("#rFrom", view).value, t = $("#rTo", view).value;
+    if (f && t && f > t) { toast("From date must be before To date", "bad"); return; }
+    st.from = f; st.to = t; refresh();
+  };
+  $("#rFrom", view).addEventListener("change", onDate);
+  $("#rTo", view).addEventListener("change", onDate);
+  showCustom();
   $("#rpExport", view).addEventListener("click", exportReport);
   $("#rpPrint", view).addEventListener("click", () => {
     $("#rpGrid", root).classList.add("print-area");
@@ -81,7 +110,7 @@ function data() {
   const bySubject = countBy(bk, (b) => [...canonSubjects(b.subjects)].map(subjLabel)).slice(0, 10);
   const byStatus = BOOKING_STATUSES.map((s) => [s, bk.filter((b) => (b.status || "New") === s).length]).filter((e) => e[1]);
   const byPlace = countBy(bk, (b) => [b.mode === "Online tuition" ? "Online" : (b.area ? cap(String(b.area).trim().toLowerCase()) : b.city)]).slice(0, 10);
-  const months = lastMonths(st.range === "all" ? 12 : Math.max(Number(st.range), 3));
+  const months = chartMonths();
   const monthly = months.map((mk) => [mk, ctx.payments.filter((p) => String(p.date || "").slice(0, 7) === mk).reduce((a, p) => a + (Number(p.amount) || 0), 0)]);
   const monthlyBk = months.map((mk) => [mk, ctx.bookings.filter((b) => monthKey(new Date(b.createdAt)) === mk).length]);
   const monthlyAdm = months.map((mk) => [mk, ctx.students.filter((s) => admittedAt(s) && monthKey(new Date(admittedAt(s))) === mk).length]);
@@ -90,7 +119,7 @@ function data() {
   const tutorRows = new Map();
   ctx.students.filter((s) => (s.status || "Active") === "Active" && s.tutorId).forEach((s) => {
     const r = tutorRows.get(s.tutorId) || { name: s.tutorName, students: 0, fees: 0 };
-    r.students++; r.fees += Number(s.monthlyFee) || 0;
+    r.students++; r.fees += monthlyTotal(s);
     tutorRows.set(s.tutorId, r);
   });
   const tutorsTop = [...tutorRows.values()].sort((a, b) => b.students - a.students);
@@ -100,6 +129,7 @@ function data() {
 function refresh() {
   if (!root || !document.body.contains(root)) return;
   const d = data();
+  $("#rpPeriod", root).textContent = "Period: " + periodText();
   const conv = d.bk.length ? Math.round((d.converted / d.bk.length) * 100) : 0;
   const callTimes = d.bk.filter((b) => b.claimedAt && b.createdAt && b.source === "website").map((b) => b.claimedAt - b.createdAt).filter((x) => x > 0);
   const avgCall = callTimes.length ? callTimes.reduce((a, b) => a + b, 0) / callTimes.length : 0;
@@ -137,7 +167,7 @@ function refresh() {
 function exportReport() {
   const d = data();
   exportXlsx({
-    "Summary": [{ "Period": $("#rRange", root).selectedOptions[0].textContent, "Bookings / leads": d.bk.length, "Website bookings": d.web, "Phone / walk-in leads": d.phoneLeads,
+    "Summary": [{ "Period": periodText(), "Bookings / leads": d.bk.length, "Website bookings": d.web, "Phone / walk-in leads": d.phoneLeads,
       "Bookings converted": d.converted, "Direct admissions": d.direct, "Total new students": d.admitted.length, "Fees collected": d.collected }],
     "New students by month": d.monthlyAdm.map(([mk, v], i) => ({ Month: monthLabel(mk), "New students": v, "Of which direct": d.monthlyDirect[i][1] })),
     "Collections by month": d.monthly.map(([mk, v]) => ({ Month: monthLabel(mk), Amount: v })),
@@ -145,7 +175,7 @@ function exportReport() {
     "Bookings by status": d.byStatus.map(([k2, v]) => ({ Status: k2, Bookings: v })),
     "Bookings by area": d.byPlace.map(([k2, v]) => ({ Area: k2, Bookings: v })),
     "Tutor-wise students": d.tutorsTop.map((t) => ({ Tutor: t.name, "Active students": t.students, "Monthly fees": t.fees }))
-  }, `CF-Academy-Report-${todayISO()}.xlsx`);
+  }, `CF-Academy-Report-${st.range === "custom" ? rangeFileTag({ from: st.from, to: st.to }) : String(periodText()).replace(/\s+/g, "-") + "-" + todayISO()}.xlsx`);
 }
 
 export default { deps: ["bookings", "students", "payments"], render, refresh };

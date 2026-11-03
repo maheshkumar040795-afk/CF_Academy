@@ -117,9 +117,56 @@ export function matchTutors(b, tutors, limit = 8) {
   return out.sort((a, b2) => b2.score - a.score).slice(0, limit);
 }
 
-// Fee status of a student for a month key (YYYY-MM)
+// ── GST on tuition fee ──
+// student.monthlyFee is the fee entered by the admin (before GST). When student.gst is on,
+// 18% GST is added: ₹5,000 → ₹5,000 + ₹900 GST = ₹5,900 payable every month.
+export const GST_RATE = 18;
+export function gstOf(base) { return Math.round((Number(base) || 0) * GST_RATE) / 100; }
+export function feeParts(s) {
+  const base = Number(s && s.monthlyFee) || 0;
+  const gst = s && s.gst ? gstOf(base) : 0;
+  return { base, gst, total: Math.round((base + gst) * 100) / 100, on: !!(s && s.gst) };
+}
+export const monthlyTotal = (s) => feeParts(s).total;
+// "₹ 5,900" with a small "₹ 5,000 + 18% GST" line underneath (for tables / cards)
+export function feeHTML(s, inr) {
+  const p = feeParts(s);
+  return p.on ? `${inr(p.total)}<span class="sub">${inr(p.base)} + ${GST_RATE}% GST</span>` : inr(p.base);
+}
+// Monthly fee input + GST switch, used in Add / Edit student and Convert to student
+export function gstFieldsHTML(v = {}) {
+  return `
+    <div class="fld"><label>Monthly fee (₹) *</label><input name="monthlyFee" type="number" min="0" step="50" value="${esc(v.monthlyFee == null ? "" : v.monthlyFee)}" data-gst-base></div>
+    <div class="fld"><label>GST (${GST_RATE}%)</label>
+      <label class="switch"><input type="checkbox" name="gst" data-gst-on ${v.gst ? "checked" : ""}><span class="sw" aria-hidden="true"></span><span data-gst-state>${v.gst ? "GST on" : "GST off"}</span></label></div>
+    <div class="fld full"><div class="note gst-note" data-gst-out></div></div>`;
+}
+export function bindGst(root, inr) {
+  const base = root.querySelector("[data-gst-base]"), on = root.querySelector("[data-gst-on]");
+  const out = root.querySelector("[data-gst-out]"), state = root.querySelector("[data-gst-state]");
+  if (!base || !on || !out) return;
+  const upd = () => {
+    const b = Number(base.value) || 0;
+    state.textContent = on.checked ? "GST on" : "GST off";
+    out.className = "note gst-note" + (on.checked ? " ok" : "");
+    out.innerHTML = !b ? "Enter the monthly fee." : on.checked
+      ? `Fee ${inr(b)} + GST ${GST_RATE}% ${inr(gstOf(b))} = <b>${inr(b + gstOf(b))}</b> per month`
+      : `GST off — parent pays <b>${inr(b)}</b> per month`;
+  };
+  base.addEventListener("input", upd); on.addEventListener("change", upd); upd();
+}
+// GST split of an amount that already includes GST (for receipts). Tamil Nadu: CGST 9% + SGST 9%.
+export function splitGst(amount) {
+  const total = Number(amount) || 0;
+  const taxable = Math.round((total * 100 / (100 + GST_RATE)) * 100) / 100;
+  const gst = Math.round((total - taxable) * 100) / 100;
+  const cgst = Math.round((gst / 2) * 100) / 100;
+  return { total, taxable, gst, cgst, sgst: Math.round((gst - cgst) * 100) / 100 };
+}
+
+// Fee status of a student for a month key (YYYY-MM) — fee includes GST when it is on
 export function feeFor(student, payments, mk) {
-  const fee = Number(student.monthlyFee) || 0;
+  const fee = monthlyTotal(student);
   const paid = payments
     .filter((p) => p.studentId === student.id && (p.monthKeys || [p.monthKey]).includes(mk))
     .reduce((sum, p) => sum + (Number(p.amount) || 0) / Math.max(1, (p.monthKeys || [p.monthKey]).length), 0);

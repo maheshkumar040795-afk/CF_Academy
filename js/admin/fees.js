@@ -1,7 +1,7 @@
 // Fees — month view: who paid, who is due, WhatsApp reminders
 import { SITE } from "../site-config.js";
-import { $, $$, esc, fmtPhone, fmtDate, inr, waLink, options, exportXlsx, monthKey, monthLabel, lastMonths, ICONS } from "./ui.js";
-import { feeFor, feePill } from "./common.js";
+import { $, $$, esc, fmtPhone, fmtDate, inr, waLink, options, exportXlsx, monthKey, monthLabel, lastMonths, askDateRange, monthsInRange, rangeFileTag, ICONS } from "./ui.js";
+import { feeFor, feePill, feeParts, GST_RATE } from "./common.js";
 
 const st = { month: monthKey(), status: "", q: "" };
 let root, ctx;
@@ -80,13 +80,25 @@ function renderAll() {
         </tr>`).join("")}</tbody></table></div>` : `<div class="panel empty">${rows.length ? "No students match." : "No active students for this month yet."}</div>`;
 }
 
-function exportFees() {
-  exportXlsx({
-    [monthLabel(st.month)]: computed().map(({ s, f }) => ({
-      "Student": s.name, "Parent": s.parentName, "Mobile": s.phone, "Class": s.studentClass, "Tutor": s.tutorName || "",
-      "Fee": f.fee, "Paid": f.paid, "Balance": f.balance, "Status": f.status
-    }))
-  }, `CF-Academy-Fees-${st.month}.xlsx`);
+async function exportFees() {
+  const r = await askDateRange({ title: "Download fees", note: "Fee status of every active student for each month between these dates (up to 24 months)." });
+  if (!r) return;
+  const months = monthsInRange(r, 24);
+  const rows = [], summary = [];
+  months.forEach((mk) => {
+    let exp = 0, got = 0, bal = 0;
+    studentsFor(mk).forEach((s) => {
+      const f = feeFor(s, ctx.payments, mk), fp = feeParts(s);
+      exp += f.fee; got += Math.min(f.paid, f.fee || f.paid); bal += f.balance;
+      rows.push({
+        "Month": monthLabel(mk), "Student": s.name, "Parent": s.parentName, "Mobile": s.phone, "Class": s.studentClass, "Tutor": s.tutorName || "",
+        "Fee (before GST)": fp.base, "GST": fp.on ? `${GST_RATE}%` : "Off", "GST amount": fp.gst,
+        "Fee payable": f.fee, "Paid": f.paid, "Balance": f.balance, "Status": f.status
+      });
+    });
+    summary.push({ "Month": monthLabel(mk), "Expected": exp, "Collected": got, "Pending": bal });
+  });
+  exportXlsx({ "Fees": rows, "Month summary": summary }, `CF-Academy-Fees-${rangeFileTag(r)}.xlsx`);
 }
 
 function refresh() { renderAll(); }

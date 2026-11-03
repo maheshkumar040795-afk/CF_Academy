@@ -1,8 +1,8 @@
 // Bookings / Leads — live list, call-back, tutor allocation, convert to student
 import { put, remove, makeBookingNo } from "../db.js";
 import { SUBJECTS, EXAMS, CLASSES, BOARDS, CITIES, TIME_SLOTS, BOOKING_STATUSES } from "../site-config.js";
-import { $, $$, esc, fmtDateTime, fmtDate, fmtPhone, normPhone, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, ICONS } from "./ui.js";
-import { statusPill, isOverdue, matchTutors } from "./common.js";
+import { $, $$, esc, fmtDateTime, fmtDate, fmtPhone, normPhone, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, inr, askDateRange, inRangeMs, rangeFileTag, ICONS } from "./ui.js";
+import { statusPill, isOverdue, matchTutors, gstFieldsHTML, bindGst } from "./common.js";
 
 const PAGE = 50;
 const st = { tab: "All", q: "", mode: "", city: "", page: 0, selected: null, tutorQ: "" };
@@ -266,7 +266,7 @@ function convertToStudent(b) {
         <div class="fld"><label>Area</label><input name="area" value="${esc(b.area)}"></div>
         <div class="fld"><label>City</label><select name="city">${options(CITIES, b.city, "—")}</select></div>
         <div class="fld full"><label>Schedule</label><input name="schedule" value="${esc([b.days, b.time].filter(Boolean).join(" · "))}"></div>
-        <div class="fld"><label>Monthly fee (₹) *</label><input name="monthlyFee" type="number" min="0" step="50" required></div>
+        ${gstFieldsHTML({})}
         <div class="fld"><label>Join date</label><input name="joinDate" type="date" value="${esc(todayISO())}"></div>
         <div class="fld full"><label>Tutor</label><input value="${esc(b.tutorName || "Not assigned yet — you can assign later")}" disabled></div>
       </div>`,
@@ -277,7 +277,7 @@ function convertToStudent(b) {
           const f = readFields($("#cvForm", m));
           if (!f.name || !f.monthlyFee) { toast("Enter student name and monthly fee", "bad"); return false; }
           const sid = await put("students", {
-            ...f, monthlyFee: Number(f.monthlyFee), phone: normPhone(f.phone), status: "Active",
+            ...f, monthlyFee: Number(f.monthlyFee), gst: !!f.gst, phone: normPhone(f.phone), status: "Active",
             tutorId: b.tutorId || "", tutorName: b.tutorName || "", tutorPhone: b.tutorPhone || "",
             bookingId: b.id, bookingNo: b.bookingNo || "", email: b.email || "", address: b.address || ""
           });
@@ -285,7 +285,8 @@ function convertToStudent(b) {
           toast(`${f.name} added to students`, "ok");
         }
       }
-    ]
+    ],
+    onOpen: (m) => bindGst(m, inr)
   });
 }
 
@@ -324,15 +325,17 @@ function addLead() {
   });
 }
 
-function exportBookings() {
-  const rows = filtered().map((b) => ({
+async function exportBookings() {
+  const r = await askDateRange({ title: "Download bookings", note: "Bookings received between these dates (the tab and filters on screen also apply)." });
+  if (!r) return;
+  const rows = filtered().filter((b) => inRangeMs(b.createdAt, r)).map((b) => ({
     "Booking ID": b.bookingNo, "Date": fmtDateTime(b.createdAt), "Status": b.status, "Parent": b.parentName, "Mobile": b.phone,
     "Email": b.email || "", "Student": b.studentName, "Class": b.studentClass, "Board": b.board || "", "Subjects": b.subjects,
     "Tuition": b.mode, "Area": b.area || "", "City": b.city || "", "Address": b.address || "", "Days": b.days || "", "Time": b.time || "",
     "Start date": b.startDate || "", "Parent notes": b.notes || "", "Tutor": b.tutorName || "", "Tutor mobile": b.tutorPhone || "",
     "Handled by": b.claimedBy || "", "Follow-up": b.followUp || "", "Call notes": b.adminNotes || "", "Source": b.source || ""
   }));
-  exportXlsx({ Bookings: rows }, `CF-Academy-Bookings-${todayISO()}.xlsx`);
+  exportXlsx({ Bookings: rows }, `CF-Academy-Bookings-${rangeFileTag(r)}.xlsx`);
 }
 
 function refresh(key) {

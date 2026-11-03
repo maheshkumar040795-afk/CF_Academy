@@ -1,8 +1,8 @@
 // Student Allocation — match each student to a tutor by subject, class and location
 import { put } from "../db.js";
 import { SUBJECTS, CITIES, SITE } from "../site-config.js";
-import { $, $$, esc, fmtPhone, fmtDate, normPhone, waLink, toast, options, debounce, todayISO, exportXlsx, ICONS } from "./ui.js";
-import { matchTutors, canonSubjects } from "./common.js";
+import { $, $$, esc, fmtPhone, fmtDate, normPhone, waLink, toast, options, debounce, todayISO, exportXlsx, inr, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
+import { matchTutors, canonSubjects, monthlyTotal } from "./common.js";
 
 const st = { view: "students", tab: "Needs tutor", q: "", subject: "", city: "", selected: null, tutorQ: "", tq: "" };
 let root, ctx;
@@ -174,7 +174,7 @@ function renderDetail() {
       <span>Subjects</span><b>${esc(s.subjects || "—")}</b>
       <span>Location</span><b>${esc([s.address, s.area, s.city].filter(Boolean).join(", ") || "—")}</b>
       <span>Schedule</span><b>${esc(s.schedule || "—")}</b>
-      <span>Monthly fee</span><b>₹ ${esc(s.monthlyFee || 0)}</b>
+      <span>Monthly fee</span><b>${inr(monthlyTotal(s))}${s.gst ? " (incl. GST)" : ""}</b>
     </div>
 
     <h3>Current tutor</h3>
@@ -259,14 +259,16 @@ function renderByTutor() {
   inp.addEventListener("input", debounce(() => { st.tq = inp.value.trim(); renderByTutor(); const n = $("#aTQ", root); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250));
 }
 
-function exportAllocation() {
+async function exportAllocation() {
+  const r = await askDateRange({ title: "Download allocation", note: "Students allocated to a tutor between these dates. Choose “All dates” to include students not allocated yet." });
+  if (!r) return;
   exportXlsx({
-    Allocation: active().map((s) => ({
+    Allocation: active().filter((s) => inRangeISO(s.allocatedOn, r)).map((s) => ({
       "Student": s.name, "Class": s.studentClass || "", "Board": s.board || "", "Subjects": s.subjects || "", "Tuition": s.mode || "",
       "Area": s.area || "", "City": s.city || "", "Parent": s.parentName || "", "Parent mobile": s.phone || "",
       "Tutor": s.tutorName || "NOT ALLOCATED", "Tutor mobile": s.tutorPhone || "", "Allocated on": s.allocatedOn || "", "Schedule": s.schedule || ""
     }))
-  }, `CF-Academy-Allocation-${todayISO()}.xlsx`);
+  }, `CF-Academy-Allocation-${rangeFileTag(r)}.xlsx`);
 }
 
 function refresh() {

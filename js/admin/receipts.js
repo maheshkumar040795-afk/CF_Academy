@@ -1,8 +1,8 @@
 // Receipts — record a fee payment and generate a numbered, printable receipt
 import { put, remove, nextReceiptNo } from "../db.js";
 import { SITE } from "../site-config.js";
-import { $, $$, esc, fmtDate, fmtPhone, inr, waLink, toast, confirmBox, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, amountInWords, ICONS } from "./ui.js";
-import { feeFor } from "./common.js";
+import { $, $$, esc, fmtDate, fmtPhone, inr, waLink, toast, confirmBox, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, amountInWords, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
+import { feeFor, feeParts, monthlyTotal, splitGst, GST_RATE } from "./common.js";
 
 const st = { q: "", shownId: null, studentId: "" };
 let root, ctx;
@@ -105,10 +105,11 @@ function updateInfo(setAmount) {
   const dues = keys.map((k) => feeFor(s, ctx.payments, k));
   const balance = dues.reduce((a, d) => a + d.balance, 0);
   const paidAny = dues.some((d) => d.paid > 0);
-  info.className = "note " + (balance === 0 && Number(s.monthlyFee) ? "ok" : "");
-  info.innerHTML = `Tutor: <b>${esc(s.tutorName || "Not assigned")}</b> · Monthly fee <b>${inr(s.monthlyFee)}</b><br>` +
-    (balance === 0 && Number(s.monthlyFee) ? `${esc(monthsLabel(keys))} is already fully paid.` : `Balance for ${esc(monthsLabel(keys))}: <b>${inr(balance)}</b>${paidAny ? " (part paid earlier)" : ""}`);
-  if (setAmount) $("#pAmount", root).value = balance || Number(s.monthlyFee) * keys.length || "";
+  const fp = feeParts(s);
+  info.className = "note " + (balance === 0 && fp.total ? "ok" : "");
+  info.innerHTML = `Tutor: <b>${esc(s.tutorName || "Not assigned")}</b> · Monthly fee <b>${inr(fp.total)}</b>${fp.on ? ` <span class="sub" style="display:inline">(${inr(fp.base)} + ${GST_RATE}% GST)</span>` : ""}<br>` +
+    (balance === 0 && fp.total ? `${esc(monthsLabel(keys))} is already fully paid.` : `Balance for ${esc(monthsLabel(keys))}: <b>${inr(balance)}</b>${paidAny ? " (part paid earlier)" : ""}`);
+  if (setAmount) $("#pAmount", root).value = balance || monthlyTotal(s) * keys.length || "";
 }
 
 async function savePayment(e) {
@@ -129,7 +130,7 @@ async function savePayment(e) {
       note: $("#pNote", root).value.trim(), monthKeys: keys, monthsLabel: monthsLabel(keys),
       studentId: s.id, studentName: s.name, parentName: s.parentName || "", phone: s.phone || "",
       studentClass: s.studentClass || "", board: s.board || "", subjects: s.subjects || "", mode: s.mode || "",
-      tutorName: s.tutorName || "", monthlyFee: Number(s.monthlyFee) || 0, collectedBy: ctx.user.email
+      tutorName: s.tutorName || "", monthlyFee: Number(s.monthlyFee) || 0, gst: !!s.gst, ...(s.gst ? { gstRate: GST_RATE, ...gstFields(amount) } : {}), collectedBy: ctx.user.email
     });
     st.shownId = id;
     $("#pRef", root).value = ""; $("#pNote", root).value = "";
@@ -142,7 +143,14 @@ async function savePayment(e) {
   }
 }
 
+// GST split stored on the receipt: amount received already includes GST
+function gstFields(amount) {
+  const g = splitGst(amount);
+  return { taxableAmount: g.taxable, gstAmount: g.gst, cgst: g.cgst, sgst: g.sgst };
+}
+
 export function receiptHTML(p) {
+  const g = p.gst ? splitGst(p.amount) : null;
   const studentNow = ctx && ctx.students.find((s) => s.id === p.studentId);
   let balanceLine = "";
   if (studentNow && (p.monthKeys || []).length) {
@@ -163,12 +171,15 @@ export function receiptHTML(p) {
         <span>Parent <b>${esc(p.parentName || "—")}</b></span>
         <span>Class <b>${esc(p.studentClass || "—")}${p.board ? " · " + esc(p.board) : ""}</b></span>
         <span>Tutor <b>${esc(p.tutorName || "—")}</b></span>
+        ${p.gst && SITE.gstin ? `<span>GSTIN <b>${esc(SITE.gstin)}</b></span>` : ""}
       </div>
       <table>
         <thead><tr><th>Description</th><th class="amt">Amount</th></tr></thead>
         <tbody>
-          <tr><td>Tuition fee — ${esc(p.subjects || "")} · ${esc(p.monthsLabel)}${p.mode ? " (" + esc(p.mode.toLowerCase()) + ")" : ""}${p.note ? `<br><span class="sub">${esc(p.note)}</span>` : ""}</td><td class="amt">${inr(p.amount)}</td></tr>
-          <tr class="total"><td>Total received</td><td class="amt">${inr(p.amount)}</td></tr>
+          <tr><td>Tuition fee — ${esc(p.subjects || "")} · ${esc(p.monthsLabel)}${p.mode ? " (" + esc(p.mode.toLowerCase()) + ")" : ""}${p.note ? `<br><span class="sub">${esc(p.note)}</span>` : ""}</td><td class="amt">${inr(g ? g.taxable : p.amount)}</td></tr>
+          ${g ? `<tr><td>CGST @ ${(p.gstRate || GST_RATE) / 2}%</td><td class="amt">${inr(g.cgst)}</td></tr>
+          <tr><td>SGST @ ${(p.gstRate || GST_RATE) / 2}%</td><td class="amt">${inr(g.sgst)}</td></tr>` : ""}
+          <tr class="total"><td>Total received${g ? " (incl. GST)" : ""}</td><td class="amt">${inr(p.amount)}</td></tr>
         </tbody>
       </table>
       <div class="words">In words: <b style="color:var(--ink);font-weight:500">Rupees ${esc(amountInWords(p.amount))} only</b></div>
@@ -311,14 +322,20 @@ function renderList() {
       ${list.length > 300 ? `<p class="sub">Showing latest 300 of ${list.length}. Search to find older receipts.</p>` : ""}` : `<div class="empty">No receipts yet.</div>`;
 }
 
-function exportReceipts() {
+async function exportReceipts() {
+  const r = await askDateRange({ title: "Download receipts", note: "Receipts dated between these dates." });
+  if (!r) return;
   exportXlsx({
-    Receipts: ctx.payments.map((p) => ({
-      "Receipt no": p.receiptNo, "Date": p.date, "Student": p.studentName, "Parent": p.parentName, "Mobile": p.phone,
-      "Class": p.studentClass, "Subjects": p.subjects, "Tutor": p.tutorName, "For": p.monthsLabel,
-      "Amount": Number(p.amount) || 0, "Paid by": p.payMode, "Reference": p.reference || "", "Collected by": p.collectedBy || ""
-    }))
-  }, `CF-Academy-Receipts-${todayISO()}.xlsx`);
+    Receipts: ctx.payments.filter((p) => inRangeISO(p.date, r)).map((p) => {
+      const g = p.gst ? splitGst(p.amount) : null;
+      return {
+        "Receipt no": p.receiptNo, "Date": p.date, "Student": p.studentName, "Parent": p.parentName, "Mobile": p.phone,
+        "Class": p.studentClass, "Subjects": p.subjects, "Tutor": p.tutorName, "For": p.monthsLabel,
+        "Fee (before GST)": g ? g.taxable : Number(p.amount) || 0, "CGST": g ? g.cgst : 0, "SGST": g ? g.sgst : 0, "GST total": g ? g.gst : 0,
+        "Amount received": Number(p.amount) || 0, "Paid by": p.payMode, "Reference": p.reference || "", "Collected by": p.collectedBy || ""
+      };
+    })
+  }, `CF-Academy-Receipts-${rangeFileTag(r)}.xlsx`);
 }
 
 function refresh(key) {

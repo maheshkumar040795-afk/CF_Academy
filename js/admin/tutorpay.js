@@ -9,7 +9,9 @@
 //   status: "Pending"|"Paid", paidOn, payMode, reference, paidBy, createdAt }
 import { put, remove } from "../db.js";
 import { SITE } from "../site-config.js";
-import { $, $$, esc, inr, fmtDate, fmtPhone, normPhone, toast, modal, confirmBox, options, exportXlsx, todayISO, monthKey, monthLabel, lastMonths, waLink, ICONS } from "./ui.js";
+import { $, $$, esc, inr, fmtDate, fmtPhone, normPhone, toast, modal, confirmBox, options, exportXlsx, todayISO, monthKey, monthLabel, lastMonths, waLink, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
+
+const lastDay = (mk) => { const [y, m] = mk.split("-").map(Number); return mk + "-" + String(new Date(y, m, 0).getDate()).padStart(2, "0"); };
 
 // ── Class days & hours ──
 const DAY_WORDS = {
@@ -462,13 +464,25 @@ export function openSalarySheet(ctx) {
   $$(".seg button", root).forEach((b) => b.addEventListener("click", () => { S.type = b.dataset.type; S.key = currentPeriod(S.type); fill(); draw(); }));
   $("#ssKey", root).addEventListener("change", (e) => { S.key = e.target.value; draw(); });
   $("#ssStatus", root).addEventListener("change", (e) => { S.status = e.target.value; draw(); });
-  $("#ssExport", root).addEventListener("click", () => exportXlsx({
-    Salaries: rows().map((r) => ({
+  $("#ssExport", root).addEventListener("click", async () => {
+    const r = await askDateRange({ title: "Download tutor salaries", note: "Saved salary records (Pending / Paid) whose month or week falls between these dates. The sheet on screen is added as a second tab." });
+    if (!r) return;
+    const saved = (ctx.tutorPayouts || []).filter((p) => inRangeISO(p.periodType === "month" ? p.periodKey + "-01" : p.periodKey, r) || (p.periodType === "month" && inRangeISO(lastDay(p.periodKey), r)))
+      .sort((a, b) => String(a.periodKey).localeCompare(String(b.periodKey)) || String(a.tutorName).localeCompare(String(b.tutorName)));
+    exportXlsx({
+      "Salaries in period": saved.map((p) => ({
+        Period: p.periodLabel || p.periodKey, Type: p.periodType === "week" ? "Weekly" : "Monthly", Tutor: p.tutorName, Mobile: p.tutorPhone || "",
+        Hours: p.totalHours || 0, "Rate per hour": Number(p.rate) || 0, Gross: Number(p.gross) || 0, "Leave days": p.leaveDays || 0,
+        "Leave deduction": p.leaveDeduction || 0, Adjustment: p.adjustment || 0, "Net salary": Number(p.net) || 0, Status: p.status,
+        "Paid on": p.paidOn || "", "Paid by": p.payMode || "", Reference: p.reference || ""
+      })),
+      [periodLabel(S.type, S.key).slice(0, 31)]: rows().map((r) => ({
       Tutor: r.t.name, Mobile: r.t.phone, "UPI ID": r.t.upi || "", Students: r.students, Hours: r.hours, "Rate per hour": Number(r.t.fee) || 0,
       "Leave days": r.p ? r.p.leaveDays || 0 : 0, "Leave deduction": r.p ? r.p.leaveDeduction || 0 : 0, Adjustment: r.p ? r.p.adjustment || 0 : 0,
       "Net salary": r.amount, Status: r.status, "Paid on": r.p ? r.p.paidOn || "" : "", "Paid by": r.p ? r.p.payMode || "" : "", Reference: r.p ? r.p.reference || "" : ""
     }))
-  }, `CF-Academy-Tutor-Salaries-${S.key}.xlsx`));
+    }, `CF-Academy-Tutor-Salaries-${rangeFileTag(r)}.xlsx`);
+  });
   fill(); draw();
   if (ctx.tutors == null) ctx.ensureTutors().catch(() => {});
 }

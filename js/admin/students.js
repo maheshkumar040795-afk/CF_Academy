@@ -1,8 +1,8 @@
 // Students — converted bookings with tutor, schedule and monthly fee
 import { put, remove } from "../db.js";
 import { SITE, CLASSES, BOARDS, CITIES } from "../site-config.js";
-import { $, $$, esc, fmtPhone, fmtDate, normPhone, inr, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, ICONS } from "./ui.js";
-import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay } from "./common.js";
+import { $, $$, esc, fmtPhone, fmtDate, normPhone, inr, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
+import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay, feeParts, feeHTML, gstFieldsHTML, bindGst, GST_RATE } from "./common.js";
 
 const st = { q: "", status: "Active", tutor: "", fee: "" };
 let root, ctx, openedParam = null;
@@ -100,7 +100,7 @@ function renderList() {
           <td>${esc(s.studentClass)}${s.board ? " · " + esc(s.board) : ""}<span class="sub">${esc(s.subjects)}</span></td>
           <td>${s.tutorName ? esc(s.tutorName) : `<a class="pill p-due" href="#/allocation?student=${esc(s.id)}" style="text-decoration:none">Allocate tutor</a>`}<span class="sub">${esc(s.mode === "Online tuition" ? "Online" : "Home")} · ${esc([s.area, s.city].filter(Boolean).join(", "))}</span></td>
           <td>${esc(s.schedule || "—")}</td>
-          <td class="num">${inr(s.monthlyFee)}</td>
+          <td class="num">${feeHTML(s, inr)}</td>
           <td>${(s.status || "Active") === "Active" ? `<div class="fee-cell">${feeIcon(s, d)}<span>${feeDuePill(d)}${d.status === "Partial" ? `<span class="sub">Bal ${inr(d.balance)}</span>` : ""}${d.prevDue ? `<span class="sub" style="color:var(--err)">+ ${inr(d.prevDue)} last month</span>` : ""}</span></div>` : '<span class="pill p-lost">Inactive</span>'}</td>
           <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-act="view" data-id="${esc(s.id)}">View</button> <button class="btn btn-ghost btn-sm" data-act="edit" data-id="${esc(s.id)}">Edit</button></td>
         </tr>`;
@@ -147,7 +147,7 @@ function feeCard(s) {
     wide: true,
     body: `
       <div class="stats">
-        <div class="stat"><span>Monthly fee</span><b>${inr(s.monthlyFee)}</b></div>
+        <div class="stat"><span>Monthly fee${s.gst ? " (incl. GST)" : ""}</span><b>${inr(feeParts(s).total)}</b>${s.gst ? `<span>${inr(feeParts(s).base)} + ${GST_RATE}% GST ${inr(feeParts(s).gst)}</span>` : ""}</div>
         <div class="stat"><span>Due every month on</span><b>${esc(ordinal(dueDay(s)))}</b></div>
         <div class="stat ${d.kind === "late" || d.kind === "today" ? "bad" : d.kind === "soon" ? "warn" : d.kind === "paid" ? "good" : ""}"><span>${esc(monthLabel(curMk))}</span><b style="font-size:18px;margin-top:6px">${feeDuePill(d)}</b></div>
       </div>
@@ -213,7 +213,7 @@ function editStudent(s) {
         <div class="fld"><label>City</label><select name="city">${options(CITIES, v.city, "—")}</select></div>
         <div class="fld full"><label>Address</label><input name="address" value="${esc(v.address)}"></div>
         <div class="fld full"><label>Tutor</label>${tutorPicker(s)}</div>
-        <div class="fld"><label>Monthly fee (₹) *</label><input name="monthlyFee" type="number" min="0" step="50" value="${esc(v.monthlyFee)}"></div>
+        ${gstFieldsHTML(v)}
         <div class="fld"><label>Join date</label><input name="joinDate" type="date" value="${esc(v.joinDate)}"></div>
         <div class="fld"><label>Fee due day (1–31)</label><input name="feeDueDay" type="number" min="1" max="31" value="${esc(v.feeDueDay || "")}" placeholder="Same day as joining"></div>
         <div class="fld"><label>Hours per class</label><input name="classHours" type="number" min="0" step="0.25" value="${esc(v.classHours || "")}" placeholder="From schedule, e.g. 1"></div>
@@ -234,6 +234,7 @@ function editStudent(s) {
           const tut = resolveTutor(pick);
           if (!tut) { toast("Tutor not found — pick one from the list or leave it empty", "bad"); return false; }
           f.monthlyFee = Number(f.monthlyFee);
+          f.gst = !!f.gst;
           if (f.feeDueDay !== "") { f.feeDueDay = Math.round(Number(f.feeDueDay)); if (!(f.feeDueDay >= 1 && f.feeDueDay <= 31)) { toast("Fee due day must be 1–31", "bad"); return false; } }
           if (f.classHours !== "") f.classHours = Number(f.classHours) || 0;
           if (tut.tutorId && (!s || s.tutorId !== tut.tutorId)) tut.allocatedOn = todayISO();
@@ -242,7 +243,8 @@ function editStudent(s) {
           toast(s ? "Student updated" : "Student added", "ok");
         }
       }
-    ]
+    ],
+    onOpen: (m) => bindGst(m, inr)
   });
 }
 
@@ -256,7 +258,7 @@ function viewStudent(s) {
     wide: true,
     body: `
       <div class="stats">
-        <div class="stat"><span>Monthly fee</span><b>${inr(s.monthlyFee)}</b></div>
+        <div class="stat"><span>Monthly fee${s.gst ? " (incl. GST)" : ""}</span><b>${inr(feeParts(s).total)}</b>${s.gst ? `<span>${inr(feeParts(s).base)} + ${GST_RATE}% GST ${inr(feeParts(s).gst)}</span>` : ""}</div>
         <div class="stat"><span>${esc(monthLabel(mk))}</span><b style="font-size:18px;margin-top:6px">${feePill(f.status)}</b></div>
         <div class="stat good"><span>Total paid</span><b>${inr(total)}</b></div>
       </div>
@@ -267,6 +269,7 @@ function viewStudent(s) {
             <span class="sub">Class</span><b style="font-weight:500">${esc(s.studentClass)} ${s.board ? "· " + esc(s.board) : ""}</b>
             <span class="sub">Subjects</span><b style="font-weight:500">${esc(s.subjects)}</b>
             <span class="sub">Tuition</span><b style="font-weight:500">${esc(s.mode)}</b>
+            <span class="sub">GST</span><b style="font-weight:500">${s.gst ? `On · ${GST_RATE}% (${inr(feeParts(s).gst)} / month)` : "Off"}</b>
             <span class="sub">Location</span><b style="font-weight:500">${esc([s.address, s.area, s.city].filter(Boolean).join(", ") || "—")}</b>
             <span class="sub">Schedule</span><b style="font-weight:500">${esc(s.schedule || "—")}</b>
             <span class="sub">Tutor</span><b style="font-weight:500">${esc(s.tutorName || "Not assigned")}${s.tutorPhone ? " · " + esc(fmtPhone(s.tutorPhone)) : ""}</b>
@@ -289,19 +292,24 @@ function viewStudent(s) {
   });
 }
 
-function exportStudents() {
+async function exportStudents() {
+  const r = await askDateRange({ title: "Download students", note: "Students who joined between these dates. Choose “All dates” for every student in the list." });
+  if (!r) return;
   const mk = monthKey();
+  const list = rows().filter((s) => inRangeISO(s.joinDate, r));
   exportXlsx({
-    Students: rows().map((s) => {
+    Students: list.map((s) => {
       const f = feeFor(s, ctx.payments, mk);
+      const fp = feeParts(s);
       return {
         "Student": s.name, "Parent": s.parentName, "Mobile": s.phone, "Email": s.email || "", "Class": s.studentClass, "Board": s.board || "",
         "Subjects": s.subjects, "Tuition": s.mode, "Area": s.area || "", "City": s.city || "", "Address": s.address || "", "Schedule": s.schedule || "",
-        "Tutor": s.tutorName || "", "Tutor mobile": s.tutorPhone || "", "Monthly fee": Number(s.monthlyFee) || 0,
+        "Tutor": s.tutorName || "", "Tutor mobile": s.tutorPhone || "", "Fee (before GST)": fp.base, "GST": fp.on ? `${GST_RATE}%` : "Off",
+        "GST amount": fp.gst, "Monthly fee (payable)": fp.total,
         [`${monthLabel(mk)} status`]: f.status, "Join date": s.joinDate || "", "Status": s.status || "Active"
       };
     })
-  }, `CF-Academy-Students-${todayISO()}.xlsx`);
+  }, `CF-Academy-Students-${rangeFileTag(r)}.xlsx`);
 }
 
 function refresh() { renderList(); }

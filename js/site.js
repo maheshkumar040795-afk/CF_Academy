@@ -1,8 +1,9 @@
 // CF Academy — home page: booking form, programmes, courses table, tutors, banners
-import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202610231915";
-import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202610231915";
-import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202610231915";
-import { cld } from "./cloudinary.js?v=202610231915";
+import { SITE, SUBJECTS, EXAMS, CLASSES, BOARDS, TIME_SLOTS, DAYS, PROGRAMS, CATEGORIES } from "./site-config.js?v=202611031500";
+import { createBooking, sendToSheet, makeBookingNo, isDemo, listBanners, listFeaturedTutors } from "./db.js?v=202611031500";
+import { $, $$, escAttr, toast, reveal, idle, reduceMotion } from "./common.js?v=202611031500";
+import { cld } from "./cloudinary.js?v=202611031500";
+import { avatarSVG } from "./avatars.js?v=202611031500";
 
 function fillSelect(sel, items, placeholder) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
@@ -295,6 +296,7 @@ function renderTutors(list) {
     <article class="tutor"${hidden ? ' aria-hidden="true"' : ""}>
       <div class="t-ph">${t.photo
         ? `<img src="${escAttr(cld(t.photo, 200))}" alt="${escAttr(t.name)}" width="96" height="96" loading="lazy" decoding="async">`
+        : avatarSVG(t.gender) ? `<span class="t-in t-av" role="img" aria-label="${escAttr(t.name)}">${avatarSVG(t.gender)}</span>`
         : `<span class="t-in" aria-hidden="true">${escAttr(initials(t.name))}</span>`}</div>
       <b>${escAttr(t.name)}</b>
       ${t.experience ? `<span class="t-exp">${escAttr(/exp/i.test(t.experience) ? t.experience : t.experience + " experience")}</span>` : ""}

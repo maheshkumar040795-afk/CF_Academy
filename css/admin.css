@@ -353,3 +353,28 @@ table.t td.num, table.t th.num { text-align: right; white-space: nowrap; }
 .side nav a.active { background: #D8A65D; color: #1B2433; }
 .side .foot .role-tag { color: #D8A65D; }
 .role-pill { background: #F7ECDD; color: #7A5418; }
+
+/* GST switch (Add / Edit student, Convert to student) */
+.switch { display: inline-flex; align-items: center; gap: 10px; min-height: 42px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); user-select: none; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .sw { position: relative; width: 46px; height: 26px; border-radius: 26px; background: #CBD5E1; transition: background .15s; flex: none; }
+.switch .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.switch input:checked + .sw { background: var(--accent); }
+.switch input:checked + .sw::after { transform: translateX(20px); }
+.switch input:focus-visible + .sw { outline: 2px solid var(--accent-light); outline-offset: 2px; }
+.gst-note { margin: 0; }
+
+/* From / To date picker for Excel downloads */
+.range-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn { border: 1px solid var(--line); background: #fff; color: var(--navy); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.chip-btn:hover { border-color: var(--accent-light); }
+.chip-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Website tutors: gender choice for the no-photo icon */
+.wt-av svg, .wt-drop svg { width: 100%; height: 100%; display: block; }
+.seg-g { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg-g label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+.seg-g label + label { border-left: 1px solid var(--line); }
+.seg-g input { accent-color: var(--accent); }
+.seg-g label:has(input:checked) { background: var(--accent-soft); color: var(--navy); font-weight: 600; }
+.wt-drop #wtAvatar { width: 100%; height: 100%; display: block; }

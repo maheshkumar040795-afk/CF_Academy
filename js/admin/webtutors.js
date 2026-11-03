@@ -2,6 +2,7 @@
 import { put, remove, watch } from "../db.js";
 import { $, esc, toast, confirmBox } from "./ui.js";
 import { cloudinaryReady, uploadImage, canvasBlob, cld } from "../cloudinary.js";
+import { avatarSVG } from "../avatars.js";
 
 const MAX = 10, SIDE = 600; // photos are cropped square, 600 × 600
 let root, ctx, unsub = null, rows = [], loaded = false;
@@ -27,10 +28,11 @@ function render(view, c) {
             <input type="file" id="wtFile" accept="image/png,image/jpeg,image/webp" hidden>
             <canvas id="wtCanvas" width="${SIDE}" height="${SIDE}" hidden></canvas>
             <img id="wtCurrent" alt="" hidden>
+            <span id="wtAvatar" hidden></span>
             <span id="wtDropText">+ Photo</span>
           </label>
           <div style="flex:1;min-width:0">
-            <p class="sub" style="margin:0 0 8px">Square photo works best (face in the centre). JPG, PNG or WebP. Optional — without a photo the card shows initials.</p>
+            <p class="sub" style="margin:0 0 8px">Square photo works best (face in the centre). JPG, PNG or WebP. Optional — without a photo, choose Male or Female below and the card shows a professional profile icon.</p>
             <div class="fld" id="wtPosWrap" hidden><label for="wtPos" id="wtPosLbl">Crop position</label><input id="wtPos" type="range" min="0" max="100" value="50"></div>
             <button type="button" class="link-btn" id="wtClearPhoto" hidden>Remove photo</button>
           </div>
@@ -38,6 +40,11 @@ function render(view, c) {
         <div class="form-grid" style="grid-template-columns:1fr;margin-top:14px">
           <div class="fld"><label for="wtName">Tutor name *</label><input id="wtName" maxlength="40" placeholder="e.g. Priya Raman"></div>
           <div class="fld"><label for="wtExp">Experience *</label><input id="wtExp" maxlength="20" placeholder="e.g. 12 yrs"></div>
+          <div class="fld" id="wtGenderWrap"><label>Gender <span class="sub" style="display:inline;font-weight:400">· icon shown when there is no photo</span></label>
+            <div class="seg-g" role="radiogroup" aria-label="Gender">
+              <label><input type="radio" name="wtGender" value="Male"> Male</label>
+              <label><input type="radio" name="wtGender" value="Female"> Female</label>
+            </div></div>
           <div class="fld"><label for="wtSubj">Subject / classes (optional)</label><input id="wtSubj" maxlength="40" placeholder="e.g. Maths · Class 6–10"></div>
           <label class="check"><input type="checkbox" id="wtActive" checked> Show on website</label>
         </div>
@@ -61,6 +68,7 @@ function render(view, c) {
     showPhoto(null);
   });
   $("#wtList", view).addEventListener("click", onListClick);
+  view.querySelectorAll('input[name="wtGender"]').forEach((r) => r.addEventListener("change", () => showPhoto(editing && !editing._clearPhoto ? editing.photo || null : null)));
 
   loaded = false;
   renderList();
@@ -69,12 +77,17 @@ function render(view, c) {
     .then((u) => { unsub = u; });
 }
 
+const genderVal = () => { const r = root.querySelector('input[name="wtGender"]:checked'); return r ? r.value : ""; };
+function setGender(g) { root.querySelectorAll('input[name="wtGender"]').forEach((r) => { r.checked = r.value === g; }); }
+
 function showPhoto(url) {
-  const cur = $("#wtCurrent", root), cv = $("#wtCanvas", root);
+  const cur = $("#wtCurrent", root), cv = $("#wtCanvas", root), av = $("#wtAvatar", root);
   cv.hidden = !pending;
   cur.hidden = !!pending || !url;
   if (url) cur.src = cld(url, 240);
-  $("#wtDropText", root).hidden = !!pending || !!url;
+  const icon = !pending && !url ? avatarSVG(genderVal()) : "";
+  av.innerHTML = icon; av.hidden = !icon;
+  $("#wtDropText", root).hidden = !!pending || !!url || !!icon;
   $("#wtPosWrap", root).hidden = !pending || Math.abs(pending.w - pending.h) < 4;
   $("#wtClearPhoto", root).hidden = !pending && !url;
 }
@@ -128,11 +141,13 @@ async function save(e) {
   const experience = $("#wtExp", root).value.trim();
   if (!name) { toast("Enter the tutor's name", "bad"); $("#wtName", root).focus(); return; }
   if (!experience) { toast("Enter the experience (e.g. 12 yrs)", "bad"); $("#wtExp", root).focus(); return; }
+  const hasPhoto = !!pending || (editing && editing.photo && !editing._clearPhoto);
+  if (!hasPhoto && !genderVal()) { toast("No photo — choose Male or Female for the profile icon", "bad"); $("#wtGenderWrap", root).scrollIntoView({ block: "center" }); return; }
   if (!editing && rows.length >= MAX) { toast(`Maximum ${MAX} tutor cards — delete one first`, "bad"); return; }
   const btn = $("#wtSave", root);
   btn.disabled = true; btn.textContent = "Saving…";
   try {
-    const data = { name, experience, subject: $("#wtSubj", root).value.trim(), active: $("#wtActive", root).checked };
+    const data = { name, experience, gender: genderVal(), subject: $("#wtSubj", root).value.trim(), active: $("#wtActive", root).checked };
     if (pending) Object.assign(data, await photoValue());
     else if (editing && editing._clearPhoto) Object.assign(data, { photo: "", publicId: "" });
     if (editing) data.id = editing.id;
@@ -151,6 +166,7 @@ async function save(e) {
 function resetForm() {
   pending = null; editing = null;
   $("#wtForm", root).reset();
+  setGender("");
   $("#wtFormTitle", root).textContent = "Add a tutor";
   $("#wtSave", root).textContent = "Add tutor";
   $("#wtCancel", root).hidden = true;
@@ -167,6 +183,7 @@ function startEdit(r) {
   $("#wtExp", root).value = r.experience || "";
   $("#wtSubj", root).value = r.subject || "";
   $("#wtActive", root).checked = r.active !== false;
+  setGender(r.gender || "");
   showPhoto(r.photo || null);
   $("#wtLimit", root).hidden = true;
   $("#wtForm", root).scrollIntoView({ behavior: "smooth", block: "start" });
@@ -184,8 +201,8 @@ function renderList() {
   lim.textContent = `You have ${MAX} tutor cards — the maximum. Delete one to add another, or edit an existing card.`;
   box.innerHTML = rows.length ? `<div class="wt-cards">${rows.map((r, i) => `
     <div class="wt-card ${r.active === false ? "off" : ""}">
-      <div class="wt-av">${r.photo ? `<img src="${esc(cld(r.photo, 160))}" alt="" loading="lazy">` : `<span>${esc(initials(r.name))}</span>`}</div>
-      <div class="wt-info"><b>${i + 1}. ${esc(r.name)}</b><span>${esc(r.experience || "")}${r.subject ? " · " + esc(r.subject) : ""}</span>
+      <div class="wt-av">${r.photo ? `<img src="${esc(cld(r.photo, 160))}" alt="" loading="lazy">` : avatarSVG(r.gender) || `<span>${esc(initials(r.name))}</span>`}</div>
+      <div class="wt-info"><b>${i + 1}. ${esc(r.name)}</b><span>${esc(r.experience || "")}${r.subject ? " · " + esc(r.subject) : ""}${r.gender ? " · " + esc(r.gender) : ""}</span>
         <span class="pill ${r.active === false ? "p-lost" : "p-won"}" style="align-self:flex-start;margin-top:4px">${r.active === false ? "Hidden" : "Live"}</span></div>
       <div class="wt-actions">
         <button class="btn btn-ghost btn-sm" data-act="up" data-id="${esc(r.id)}" ${i === 0 ? "disabled" : ""} aria-label="Move up">↑</button>

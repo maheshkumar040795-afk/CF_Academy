@@ -141,9 +141,94 @@ export function exportXlsx(sheets, filename) {
     const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ "": "No data" }]);
     const keys = Object.keys(rows[0] || {});
     ws["!cols"] = keys.map((k) => ({ wch: Math.min(40, Math.max(k.length + 2, ...rows.slice(0, 200).map((r) => String(r[k] == null ? "" : r[k]).length + 1))) }));
-    XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+    XLSX.utils.book_append_sheet(wb, ws, name.replace(/[\\/?*[\]:]/g, "-").slice(0, 31));
   });
   XLSX.writeFile(wb, filename);
+}
+
+// ── Custom From / To dates for every Excel download ──
+// askDateRange() → Promise<{ from: "YYYY-MM-DD" | "", to: "YYYY-MM-DD" | "", label } | null (cancelled)>
+// Empty from / to means "no limit" (the "All dates" preset clears both).
+const isoOf = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+export function rangePresets(now = new Date()) {
+  const y = now.getFullYear(), m = now.getMonth();
+  const fyStart = m >= 3 ? y : y - 1; // Indian financial year: 1 April – 31 March
+  return [
+    ["This month", isoOf(new Date(y, m, 1)), isoOf(new Date(y, m + 1, 0))],
+    ["Last month", isoOf(new Date(y, m - 1, 1)), isoOf(new Date(y, m, 0))],
+    ["Last 3 months", isoOf(new Date(y, m - 2, 1)), isoOf(new Date(y, m + 1, 0))],
+    ["Last 6 months", isoOf(new Date(y, m - 5, 1)), isoOf(new Date(y, m + 1, 0))],
+    ["This financial year", `${fyStart}-04-01`, `${fyStart + 1}-03-31`],
+    ["Last financial year", `${fyStart - 1}-04-01`, `${fyStart}-03-31`],
+    ["All dates", "", ""]
+  ];
+}
+export function rangeLabel(r) {
+  if (!r || (!r.from && !r.to)) return "All dates";
+  if (r.from && r.to) return `${fmtDate(r.from)} – ${fmtDate(r.to)}`;
+  return r.from ? `From ${fmtDate(r.from)}` : `Up to ${fmtDate(r.to)}`;
+}
+export const rangeFileTag = (r) => (!r || (!r.from && !r.to) ? "All-dates-" + todayISO() : `${r.from || "start"}_to_${r.to || todayISO()}`);
+// date string (YYYY-MM-DD…) inside the range; rows without a date only count for "All dates"
+export function inRangeISO(v, r) {
+  if (!r || (!r.from && !r.to)) return true;
+  const d = String(v || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  return (!r.from || d >= r.from) && (!r.to || d <= r.to);
+}
+// millisecond timestamp inside the range (to-date is inclusive, to the end of that day)
+export function inRangeMs(ms, r) {
+  if (!r || (!r.from && !r.to)) return true;
+  if (!ms) return false;
+  return inRangeISO(isoOf(new Date(ms)), r);
+}
+// month keys (YYYY-MM) covered by a range, capped to `max` months (latest kept)
+export function monthsInRange(r, max = 24) {
+  const now = new Date();
+  const [fy, fm] = (r && r.from ? r.from : isoOf(new Date(now.getFullYear(), now.getMonth() - 11, 1))).split("-").map(Number);
+  const [ty, tm] = (r && r.to ? r.to : isoOf(now)).split("-").map(Number);
+  const out = [];
+  for (let d = new Date(fy, fm - 1, 1); d <= new Date(ty, tm - 1, 1); d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) out.push(monthKey(d));
+  return out.slice(-max);
+}
+let lastRange = null; // remember the last choice while the admin panel is open
+export function askDateRange({ title = "Download Excel", note = "", okLabel = "Download Excel" } = {}) {
+  const presets = rangePresets();
+  const start = lastRange || { from: presets[0][1], to: presets[0][2] };
+  return new Promise((resolve) => {
+    let done = false;
+    const m = modal({
+      title,
+      body: `
+        ${note ? `<p class="sub" style="margin:0 0 12px">${esc(note)}</p>` : ""}
+        <div class="range-chips" role="group" aria-label="Quick dates">${presets.map(([l, f, t]) => `<button type="button" class="chip-btn" data-f="${f}" data-t="${t}">${esc(l)}</button>`).join("")}</div>
+        <div class="form-grid" style="margin-top:14px">
+          <div class="fld"><label for="drFrom">From date</label><input id="drFrom" type="date" value="${esc(start.from)}"></div>
+          <div class="fld"><label for="drTo">To date</label><input id="drTo" type="date" value="${esc(start.to)}"></div>
+        </div>
+        <p class="sub" id="drLbl" style="margin:10px 0 0"></p>`,
+      actions: [
+        { label: "Cancel", onClick: () => { done = true; resolve(null); } },
+        { label: okLabel, kind: "btn-navy", onClick: (close, root) => {
+          const from = $("#drFrom", root).value, to = $("#drTo", root).value;
+          if (from && to && from > to) { toast("From date must be before To date", "bad"); return false; }
+          done = true; lastRange = { from, to };
+          resolve({ from, to, label: rangeLabel({ from, to }) });
+        } }
+      ],
+      onOpen: (root) => {
+        const upd = () => {
+          const r = { from: $("#drFrom", root).value, to: $("#drTo", root).value };
+          $("#drLbl", root).textContent = "Period: " + rangeLabel(r);
+          $$(".chip-btn", root).forEach((b) => b.classList.toggle("on", b.dataset.f === r.from && b.dataset.t === r.to));
+        };
+        $$(".chip-btn", root).forEach((b) => b.addEventListener("click", () => { $("#drFrom", root).value = b.dataset.f; $("#drTo", root).value = b.dataset.t; upd(); }));
+        $("#drFrom", root).addEventListener("input", upd); $("#drTo", root).addEventListener("input", upd);
+        upd();
+      }
+    });
+    new MutationObserver((_, obs) => { if (!document.body.contains(m.root)) { obs.disconnect(); if (!done) resolve(null); } }).observe(document.body, { childList: true });
+  });
 }
 
 // Indian-style amount in words: 125000 → "One Lakh Twenty Five Thousand"
