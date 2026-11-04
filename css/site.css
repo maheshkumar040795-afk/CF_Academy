@@ -946,3 +946,5 @@ section.block.alt { background: var(--bg-2); }
 .site-footer .foot-seo { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 13px; }
 .site-footer .foot-seo b { margin-right: 4px; }
 .site-footer .foot-seo span { border: 1px solid #7A3D4F; border-radius: 999px; padding: 4px 12px; color: #F3DDE3; }
+.site-footer .dev-by a { color: var(--accent-light); font-weight: 600; }
+.site-footer .dev-by a:hover { text-decoration: underline; }
