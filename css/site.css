@@ -941,3 +941,8 @@ section.block.alt { background: var(--bg-2); }
   .hero2 .eyebrow { animation: badgeGlow 3s ease-in-out infinite !important; }
   .hero2 .eyebrow::after { animation: badgeSweep 3.6s ease-in-out infinite !important; }
 }
+
+/* Footer: what we offer (SEO keywords, visible to parents) */
+.site-footer .foot-seo { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 13px; }
+.site-footer .foot-seo b { margin-right: 4px; }
+.site-footer .foot-seo span { border: 1px solid #7A3D4F; border-radius: 999px; padding: 4px 12px; color: #F3DDE3; }

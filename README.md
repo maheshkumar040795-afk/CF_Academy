@@ -95,6 +95,38 @@ Admin → **Tutors → Excel template** → fill (or use the academy's own sheet
 ### 5. Deploy
 GitHub Pages: push this folder to a repo → Settings → Pages → `main` / root. Custom domain: add a `CNAME` file with the domain and point the DNS (CNAME `www` → `<user>.github.io`, plus the 4 GitHub A records), then enable HTTPS.
 
+### 6. Go live on cfacademy.in — checklist
+Files already in the repo for the live domain:
+
+| File | What it does |
+| --- | --- |
+| `CNAME` | `cfacademy.in` — tells GitHub Pages the custom domain |
+| `.nojekyll` | GitHub Pages serves every file as-is |
+| `favicon.ico`, `assets/favicon-16x16.png`, `assets/favicon-32x32.png` | Browser tab icon (logo emblem, readable at small size) |
+| `assets/apple-touch-icon.png`, `assets/android-chrome-*.png`, `assets/maskable-512x512.png`, `site.webmanifest` | Phone home-screen icons |
+| `assets/og-image.jpg` | 1200 × 630 preview shown when the link is shared on WhatsApp / Facebook |
+| `robots.txt` | Lets Google index the site, hides `admin.html` |
+| `sitemap.xml` | Home, About, Contact — submit it in Google Search Console |
+| `404.html` | Friendly "Page not found" page |
+
+Every public page also has: title + description, 10 keywords, canonical link, Open Graph / Twitter tags, Chennai geo tags and Schema.org data (EducationalOrganization + LocalBusiness with address, phones and services).
+
+**DNS at the domain registrar (cfacademy.in):**
+- `A` `@` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+- `CNAME` `www` → `maheshkumar040795-afk.github.io`
+- GitHub → repo **Settings → Pages** → Custom domain `cfacademy.in` → wait for the DNS check → tick **Enforce HTTPS**.
+
+**After the site opens on https://cfacademy.in:**
+1. Firebase → Authentication → Settings → **Authorized domains** → add `cfacademy.in` and `www.cfacademy.in` (admin login fails without this).
+2. If the Firebase API key has HTTP referrer restrictions (Google Cloud → Credentials), add `https://cfacademy.in/*` and `https://www.cfacademy.in/*`.
+3. Google Search Console → Add property `cfacademy.in` (Domain) → verify with the TXT record → **Sitemaps** → submit `https://cfacademy.in/sitemap.xml` → URL inspection → Request indexing for the home page.
+4. Google Business Profile → create / claim "CF Academy" with the same address and phone, website `https://cfacademy.in` (biggest boost for "home tuition near me").
+5. Check the share preview: paste the link into WhatsApp, or use https://developers.facebook.com/tools/debug/.
+6. When a new page is added, add it to `sitemap.xml` and update `<lastmod>`.
+
+**SEO keywords used (meta keywords, titles, descriptions, footer "We offer" line):**
+home tuition in Chennai · online tuition in Chennai · home tutors in Chennai · best home tuition near me · exam coaching in Chennai · NEET JEE TNPSC coaching Chennai · college subjects tuition in Chennai · engineering subjects tuition Chennai · CBSE State Board tuition Chennai · one to one home tuition Chennai
+
 ## How it stays fast and free
 - The public pages do **not** load the Firebase SDK (~300 KB). They talk to Firestore through its small REST API — same security rules.
 - Banners and tutor cards are cached in the browser and refreshed in the background, so repeat visits show them instantly.

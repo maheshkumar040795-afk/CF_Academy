@@ -1,0 +1,8 @@
+# CF Academy — https://cfacademy.in
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /templates/
+Disallow: /apps-script/
+
+Sitemap: https://cfacademy.in/sitemap.xml
