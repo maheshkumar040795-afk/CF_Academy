@@ -2,7 +2,7 @@
 import { put } from "../db.js";
 import { SUBJECTS, CITIES, SITE } from "../site-config.js";
 import { $, $$, esc, fmtPhone, fmtDate, normPhone, waLink, toast, options, debounce, todayISO, exportXlsx, inr, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
-import { matchTutors, canonSubjects, monthlyTotal, allocationPatch } from "./common.js";
+import { matchTutors, canonSubjects, monthlyTotal, allocationPatch, checkEffectiveDate } from "./common.js";
 
 const st = { view: "students", tab: "Needs tutor", q: "", subject: "", city: "", selected: null, tutorQ: "", tq: "" };
 let root, ctx;
@@ -183,7 +183,7 @@ function renderDetail() {
         <a class="btn btn-wa btn-sm" href="${esc(waLink(s.phone, parentMsgFor(s, current)))}" target="_blank" rel="noopener">${ICONS.wa}Send tutor details to parent</a>
       </div>` : `<div class="note warn">No tutor allocated yet. Pick one from the suggestions below.</div>`}
 
-    <div class="fld" style="max-width:260px;margin-top:14px"><label for="aFrom">${s.tutorId ? "New tutor starts from" : "Tutor starts from"}</label><input id="aFrom" type="date" value="${esc(st.from || todayISO())}"><span class="hint">Tutor salary is counted from this date${s.tutorId ? "; the current tutor is paid up to the day before" : ""}.</span></div>
+    <div class="fld" style="max-width:260px;margin-top:14px"><label for="aFrom">${s.tutorId ? "New tutor effective from" : "Tutor effective from"}</label><input id="aFrom" type="date" value="${esc(st.from || (!s.tutorId && s.joinDate && s.joinDate > todayISO() ? s.joinDate : todayISO()))}"><span class="hint">Tutor salary is counted from this date${s.tutorId ? `; ${esc(s.tutorName || "the current tutor")} is paid up to the day before` : ""}.</span></div>
 
     <h3>Best-matched tutors <span class="sub" style="display:inline;font-weight:400">· subject${s.mode === "Online tuition" ? " + online" : " + area/city"} + class + experience</span></h3>
     ${!ready ? `<p class="sub">Loading tutors…</p>` : !ctx.tutors.length ? `<div class="note warn">No tutors yet. <a href="#/tutors">Import the tutor Excel</a> first.</div>` :
@@ -208,6 +208,8 @@ function renderDetail() {
 async function allocate(s, t) {
   const inp = $("#aFrom", root);
   const on = (inp && inp.value) || todayISO();
+  if (s.tutorId) { const bad = checkEffectiveDate(s, on, ctx.tutorPayouts); if (bad) throw new Error(bad); }
+  else if (s.joinDate && on < s.joinDate) throw new Error("Effective date is before the student's join date");
   const patch = { id: s.id, ...allocationPatch(s, t ? { ...t, phone: normPhone(t.phone) } : null, on, ctx.user.email) };
   await put("students", patch);
   if (s.bookingId) {

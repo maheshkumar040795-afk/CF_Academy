@@ -150,11 +150,40 @@ export function feeParts(s, mk) {
   return { base, gst, total: Math.round((base + gst) * 100) / 100, on: !!f.gst };
 }
 export const monthlyTotal = (s, mk) => feeParts(s, mk).total;
+// ── Last class date of a stopped student ──
+// Saved as leftOn when the student is marked Inactive. Students stopped before this field
+// existed get it worked out from the record's last save (the day it was marked Inactive),
+// never before the join date. The admin panel saves that estimate once (leftOnAuto) so
+// it can be checked and corrected in Edit student.
+const localISO = (ms) => { const d = new Date(ms); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+export function estimatedLastClass(s) {
+  let d = s.updatedAt ? localISO(s.updatedAt) : s.createdAt ? localISO(s.createdAt) : (s.joinDate || "");
+  if (s.joinDate && d && d < s.joinDate) d = s.joinDate;
+  return d;
+}
+export function lastClassDate(s) {
+  if ((s.status || "Active") === "Active") return "";
+  return s.leftOn || estimatedLastClass(s);
+}
 // Was the student studying in that month? (joined by its end; active, or stopped on/after its 1st)
 export function activeInMonth(s, mk) {
   if (s.joinDate && s.joinDate > mk + "-31") return false;
   if ((s.status || "Active") === "Active") return true;
-  return !!s.leftOn && s.leftOn >= mk + "-01";
+  const left = lastClassDate(s);
+  return !!left && left >= mk + "-01";
+}
+
+// ── Tutor salary is paid only after the month is complete ──
+export function lastCompletedMonth(now = new Date()) {
+  const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+// true when the whole month (or week) is over
+export function periodComplete(type, key, now = new Date()) {
+  const today = localISO(now.getTime());
+  if (type === "week") { const [y, m, d] = key.split("-").map(Number); return localISO(new Date(y, m - 1, d + 6).getTime()) < today; }
+  const [y, m] = key.split("-").map(Number);
+  return localISO(new Date(y, m, 0).getTime()) < today;
 }
 // "₹ 5,900" with a small "₹ 5,000 + 18% GST" line underneath (for tables / cards)
 export function feeHTML(s, inr) {
@@ -261,6 +290,19 @@ export function feePill(st) {
 // ── Tutor allocation with history (used by Student Allocation and Edit student) ──
 // Keeps every tutor's stint so tutor salary pays each tutor for the days they taught.
 // t = { id, name, phone } or null (remove tutor); on = "YYYY-MM-DD" the change takes effect
+// Problems with a tutor change effective date → "" when fine
+export function checkEffectiveDate(s, on, payouts) {
+  if (!on) return "Choose the effective date";
+  if (s.joinDate && on < s.joinDate) return `Effective date is before the join date (${s.joinDate.split("-").reverse().join("-")})`;
+  const cur = (s.allocationHistory || []).slice(-1)[0];
+  const curFrom = s.tutorId ? (cur && cur.tutorId === s.tutorId ? cur.on : s.allocatedOn || s.joinDate || "") : "";
+  if (s.tutorId && curFrom && on < curFrom) return `Effective date must be on or after ${s.tutorName || "the current tutor"}'s start date (${curFrom.split("-").reverse().join("-")})`;
+  // old tutor already paid for the month that contains the effective date → would pay twice
+  const paid = s.tutorId && (payouts || []).find((p) => p.tutorId === s.tutorId && p.periodType === "month" && p.status === "Paid" && p.periodKey >= on.slice(0, 7));
+  if (paid) return `${s.tutorName || "The current tutor"}'s salary for ${paid.periodLabel || paid.periodKey} is already paid. Choose an effective date after that month, or mark that salary "not paid" first.`;
+  return "";
+}
+
 export function allocationPatch(s, t, on, by) {
   let hist = (s.allocationHistory || []).slice();
   // older students have no history yet: record the current tutor's stint first

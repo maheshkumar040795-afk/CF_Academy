@@ -9,6 +9,7 @@
 //   status: "Pending"|"Paid", paidOn, payMode, reference, paidBy, createdAt }
 import { put, remove } from "../db.js";
 import { SITE } from "../site-config.js";
+import { lastClassDate, lastCompletedMonth, periodComplete } from "./common.js";
 import { $, $$, esc, inr, fmtDate, fmtPhone, normPhone, toast, modal, confirmBox, options, exportXlsx, todayISO, monthKey, monthLabel, lastMonths, waLink, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
 
 const lastDay = (mk) => { const [y, m] = mk.split("-").map(Number); return mk + "-" + String(new Date(y, m, 0).getDate()).padStart(2, "0"); };
@@ -84,6 +85,8 @@ export function periodChoices(type) {
   return out;
 }
 export const currentPeriod = (type) => (type === "month" ? monthKey() : iso(mondayOf(new Date())));
+// salary to pay now: the last completed month
+export const payablePeriod = () => lastCompletedMonth();
 
 function countClasses(days, from, to) {
   let n = 0;
@@ -97,10 +100,9 @@ function countClasses(days, from, to) {
 const dayBefore = (v) => { const d = parseISO(v); d.setDate(d.getDate() - 1); return iso(d); };
 export function tutorStints(s) {
   const inactive = (s.status || "Active") !== "Active";
-  if (inactive && !s.leftOn) return []; // stopped before last-class dates were recorded
   const h = (s.allocationHistory || []).filter((x) => x && x.on).slice().sort((a, b) => a.on.localeCompare(b.on));
   if (s.tutorId && (!h.length || h[h.length - 1].tutorId !== s.tutorId)) h.push({ tutorId: s.tutorId, on: s.allocatedOn || s.joinDate || "" });
-  const end = inactive ? s.leftOn : "";
+  const end = inactive ? lastClassDate(s) : "";
   return h.map((x, i) => ({ tutorId: x.tutorId, from: x.on, to: h[i + 1] ? dayBefore(h[i + 1].on) : end }))
     .map((st) => (end && (!st.to || st.to > end) ? { ...st, to: end } : st))
     .filter((st) => st.tutorId && (!st.to || !st.from || st.from <= st.to));
@@ -168,7 +170,7 @@ const payPill = (p) => !p ? `<span class="pill p-lost">Not paid</span>` : p.stat
 export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
   let t = tutor;
   startType = "month"; // monthly salary only
-  const S = { type: startType, key: startKey || currentPeriod(startType), edits: {}, leaveDays: 0, leaveHrs: null, deduction: null, adjust: 0, adjustNote: "", payMode: "UPI", reference: "", paidOn: todayISO() };
+  const S = { type: startType, key: startKey || payablePeriod(), edits: {}, leaveDays: 0, leaveHrs: null, deduction: null, adjust: 0, adjustNote: "", payMode: "UPI", reference: "", paidOn: todayISO() };
 
   const m = modal({
     title: "Tutor salary",
@@ -211,7 +213,7 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
     $$(".seg button", root).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === S.type)));
     const keys = periodChoices(S.type);
     if (!keys.includes(S.key)) keys.unshift(S.key);
-    $("#tpKey", root).innerHTML = keys.map((k) => `<option value="${esc(k)}" ${k === S.key ? "selected" : ""}>${esc(periodLabel(S.type, k))}${payoutFor(ctx, t.id, S.type, k) ? (payoutFor(ctx, t.id, S.type, k).status === "Paid" ? "  ✓ paid" : "  · pending") : ""}</option>`).join("");
+    $("#tpKey", root).innerHTML = keys.map((k) => `<option value="${esc(k)}" ${k === S.key ? "selected" : ""}>${esc(periodLabel(S.type, k))}${!periodComplete(S.type, k) ? "  · in progress" : ""}${payoutFor(ctx, t.id, S.type, k) ? (payoutFor(ctx, t.id, S.type, k).status === "Paid" ? "  ✓ paid" : "  · pending") : ""}</option>`).join("");
   }
   $$(".seg button", root).forEach((b) => b.addEventListener("click", () => { S.type = b.dataset.type; S.key = currentPeriod(S.type); resetForm(); fillKeys(); renderBody(); }));
   $("#tpKey", root).addEventListener("change", (e) => { S.key = e.target.value; resetForm(); renderBody(); });
@@ -258,7 +260,9 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
       box.innerHTML = `<div class="note">${esc(t.name)} had no students in ${esc(periodLabel(S.type, S.key))}. Allocate students from <a href="#/allocation">Student Allocation</a> and their classes will be counted here.</div>`;
       return;
     }
+    const done = periodComplete(S.type, S.key);
     box.innerHTML = `
+      ${!done ? `<div class="note warn" style="margin-bottom:10px"><b>${esc(periodLabel(S.type, S.key))} is not complete yet.</b> Salary is paid only after the month ends — from ${esc(fmtDate(iso(new Date(periodRange(S.type, S.key)[1].getTime() + 864e5))))}. The amount below is an estimate of the scheduled classes.</div>` : ""}
       ${!rate() ? `<div class="note warn" style="margin-bottom:10px">Enter the tutor's <b>salary per hour</b> above to calculate the salary.</div>` : ""}
       ${monthPaid ? `<div class="note warn" style="margin-bottom:10px">${esc(monthLabel(S.key.slice(0, 7)))} is already ${monthPaid.status === "Paid" ? "paid" : "saved"} as a monthly salary (${inr(monthPaid.net)}). Paying weekly too would pay twice.</div>` : ""}
       <div class="table-wrap"><table class="t tp-lines">
@@ -310,11 +314,16 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
       <div class="tp-row minus"><span>Leave deduction${S.leaveDays ? ` (${esc(S.leaveDays)} day${Number(S.leaveDays) === 1 ? "" : "s"})` : ""}</span><b>− ${inr(c.deduction)}</b></div>
       ${Number(S.adjust) ? `<div class="tp-row"><span>Adjustment</span><b>${Number(S.adjust) > 0 ? "+" : "−"} ${inr(Math.abs(Number(S.adjust)))}</b></div>` : ""}
       ${c.alreadyPaid ? `<div class="tp-row minus"><span>Already paid weekly this month</span><b>− ${inr(c.alreadyPaid)}</b></div>` : ""}
-      <div class="tp-row total"><span>Net payable</span><b>${inr(c.net)}</b></div>
+      <div class="tp-row total"><span>${periodComplete(S.type, S.key) ? "Net payable" : "Estimated salary"}</span><b>${inr(c.net)}</b></div>
       <span class="sub">${esc(periodLabel(S.type, S.key))}</span>`;
     const p = payoutFor(ctx, t.id, S.type, S.key);
     const upi = $("#tpUpi", root).value.trim();
     const upiLink = upi && c.net ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(t.name)}&am=${c.net}&cu=INR&tn=${encodeURIComponent("CF Academy salary " + periodLabel(S.type, S.key))}` : "";
+    const done = periodComplete(S.type, S.key);
+    if (!done) {
+      $("#tpActions", root).innerHTML = `<span class="sub">Payment opens on ${esc(fmtDate(iso(new Date(periodRange(S.type, S.key)[1].getTime() + 864e5))))}, after the month is complete.</span>`;
+      return;
+    }
     $("#tpActions", root).innerHTML = `
       ${upiLink ? `<a class="btn btn-ghost" href="${esc(upiLink)}">Open UPI app to transfer ${inr(c.net)}</a>` : ""}
       <button class="btn btn-ghost" type="button" data-save="Pending">${p ? "Update pending" : "Save as pending"}</button>
@@ -363,6 +372,7 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
   }
 
   async function savePayout(status, btn) {
+    if (!periodComplete(S.type, S.key)) { toast("Salary can be paid only after the month is complete", "bad"); return; }
     const c = calc();
     if (!c.lines.length) { toast("No students allocated to this tutor", "bad"); return; }
     if (status === "Paid" && !c.net && !(await confirmBox("Net payable is ₹ 0", "Mark this salary as paid with ₹ 0?", "Yes, mark paid", false))) return;
@@ -448,14 +458,14 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
 
 // ───────────────────────── Salary sheet (all tutors) ─────────────────────────
 export function openSalarySheet(ctx) {
-  const S = { type: "month", key: monthKey(), status: "" };
+  const S = { type: "month", key: payablePeriod(), status: "" };
   const m = modal({
     title: "Tutor salary sheet",
     wide: true,
     body: `
       <div class="tp-period">
         <div class="fld"><select id="ssKey" aria-label="Salary month"></select></div>
-        <div class="fld"><select id="ssStatus" aria-label="Status">${options(["Not paid", "Pending", "Paid"], "", "All tutors")}</select></div>
+        <div class="fld"><select id="ssStatus" aria-label="Status">${options(["Not paid", "Pending", "Paid", "In progress"], "", "All tutors")}</select></div>
         <button class="btn btn-ghost btn-sm" type="button" id="ssExport">${ICONS.download}Export</button>
       </div>
       <div class="stats" id="ssStats"></div>
@@ -468,7 +478,7 @@ export function openSalarySheet(ctx) {
 
   function fill() {
     $$(".seg button", root).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === S.type)));
-    $("#ssKey", root).innerHTML = periodChoices(S.type).map((k) => `<option value="${esc(k)}" ${k === S.key ? "selected" : ""}>${esc(periodLabel(S.type, k))}</option>`).join("");
+    $("#ssKey", root).innerHTML = periodChoices(S.type).map((k) => `<option value="${esc(k)}" ${k === S.key ? "selected" : ""}>${esc(periodLabel(S.type, k))}${!periodComplete(S.type, k) ? "  · in progress" : ""}</option>`).join("");
   }
   function rows() {
     const ids = tutorIdsInPeriod(ctx, S.type, S.key);
@@ -477,7 +487,7 @@ export function openSalarySheet(ctx) {
       const t = (ctx.tutors || []).find((x) => x.id === id) || { id, name: (ctx.students.find((s) => s.tutorId === id) || {}).tutorName || "Tutor", phone: "", fee: 0 };
       const p = payoutFor(ctx, id, S.type, S.key);
       const g = tutorGross(ctx, t, S.type, S.key);
-      return { t, p, students: tutorWork(ctx, id, S.type, S.key).length, hours: p ? p.totalHours : g.hours, amount: p ? p.net : g.gross, status: p ? p.status : "Not paid" };
+      return { t, p, students: tutorWork(ctx, id, S.type, S.key).length, hours: p ? p.totalHours : g.hours, amount: p ? p.net : g.gross, status: p ? p.status : periodComplete(S.type, S.key) ? "Not paid" : "In progress" };
     }).sort((a, b) => String(a.t.name).localeCompare(String(b.t.name)));
   }
   function draw() {
@@ -497,7 +507,7 @@ export function openSalarySheet(ctx) {
         <td><span class="strong">${esc(r.t.name)}</span><span class="sub">${esc(fmtPhone(r.t.phone))}</span></td>
         <td class="num">${r.students}</td><td class="num">${esc(r.hours)}</td>
         <td class="num">${r.t.fee ? inr(r.t.fee) : `<span class="pill p-due">Not set</span>`}</td>
-        <td class="num strong">${inr(r.amount)}</td><td>${payPill(r.p)}</td>
+        <td class="num strong">${inr(r.amount)}</td><td>${r.status === "In progress" ? `<span class="pill p-lost">In progress</span>` : payPill(r.p)}</td>
         <td><button class="btn btn-ghost btn-sm" type="button" data-open="${esc(r.t.id)}">Open</button></td></tr>`).join("")}</tbody></table></div>`
       : `<div class="panel empty">${all.length ? "No tutors match." : "No students are allocated to tutors yet."}</div>`;
     $$("[data-open]", root).forEach((b) => b.addEventListener("click", () => {

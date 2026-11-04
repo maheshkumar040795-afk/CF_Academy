@@ -1,9 +1,9 @@
 // Tutors — 850+ faculty: search, add / edit / delete, Excel import & export
 import { put, remove, bulkPut } from "../db.js";
 import { SUBJECTS, EXAMS, CITIES } from "../site-config.js";
-import { $, $$, esc, fmtPhone, normPhone, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, ICONS } from "./ui.js";
+import { $, $$, esc, fmtPhone, normPhone, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthLabel, ICONS } from "./ui.js";
 import { canonSubjects } from "./common.js";
-import { openTutorFinance, openSalarySheet, payoutFor, currentPeriod } from "./tutorpay.js";
+import { openTutorFinance, openSalarySheet, payoutFor, currentPeriod, payablePeriod } from "./tutorpay.js";
 
 const PAGE = 50;
 const st = { q: "", subject: "", city: "", mode: "", status: "", page: 0 };
@@ -139,9 +139,11 @@ function renderList() {
 
 // ₹ Finance button: green when this month's salary is paid, amber when pending
 function finBtn(t, n) {
-  const p = payoutFor(ctx, t.id, "month", currentPeriod("month"));
+  // salary is paid after the month is complete → status of the last completed month
+  const mk = payablePeriod(), ml = monthLabel(mk);
+  const p = payoutFor(ctx, t.id, "month", mk);
   const cls = p ? (p.status === "Paid" ? "fin-paid" : "fin-pending") : n ? "fin-due" : "";
-  const tip = p ? `${p.status === "Paid" ? "Salary paid" : "Salary pending"} for this month` : n ? "Salary for this month not paid yet" : "Salary / finance";
+  const tip = p ? `${p.status === "Paid" ? "Salary paid" : "Salary pending"} for ${ml}` : n ? `Salary for ${ml} not paid yet` : "Salary / finance";
   return `<button class="icon-btn ${cls}" data-act="fin" data-id="${esc(t.id)}" title="${esc(tip)}" aria-label="Salary for ${esc(t.name)}: ${esc(tip)}">${ICONS.fees}</button>`;
 }
 

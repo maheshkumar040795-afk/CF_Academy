@@ -131,7 +131,10 @@ const BASE = process.argv[2] || "http://localhost:8091";
     eq("Salary · changes", "X9 Tutor removed on 11 Nov (no new tutor) → A paid 1–10 Nov (4 classes ₹2,400)", T.tutorGross(ctxT([removed]), tA, "month", "2026-11").gross, 2400);
     const backdated = { ...S({ id: "bd", joinDate: "2026-11-01", schedule: MWF }), ...C.allocationPatch(S({ joinDate: "2026-11-01" }), { id: "tA", name: "Tutor A" }, "2026-11-02", "x") };
     eq("Salary · changes", "X10 Allocated with start date 2 Nov → whole month 13 classes", T.tutorGross(ctxT([backdated]), tA, "month", "2026-11").lines[0].classes, 13);
-    eq("Salary · changes", "X11 Stopped earlier without a last class date (old data) → not counted", T.tutorGross(ctxT([S({ joinDate: "2026-09-01", schedule: MWF, tutorId: "tA", status: "Inactive" })]), tA, "month", "2026-10").gross, 0);
+    const oldStop = S({ joinDate: "2026-09-01", schedule: MWF, tutorId: "tA", status: "Inactive", updatedAt: new Date(2026, 9, 15, 11).getTime() });
+    eq("Salary · changes", "X11 Old data: marked Inactive on 15 Oct (no last class date) → last class = 15 Oct", C.lastClassDate(oldStop), "2026-10-15");
+    eq("Salary · changes", "X11b …tutor paid 1–15 Oct: 6 classes = ₹3,600", T.tutorGross(ctxT([oldStop]), tA, "month", "2026-10").gross, 3600);
+    eq("Salary · changes", "X11c …and still listed on Fees for October", C.activeInMonth(oldStop, "2026-10"), true);
     eq("Salary · changes", "X12 Joined from booking with tutor (stint from join date 10 Nov) → 9 classes", T.tutorGross(ctxT([S({ joinDate: "2026-11-10", schedule: MWF, tutorId: "tA", allocatedOn: "2026-11-10", allocationHistory: [{ tutorId: "tA", on: "2026-11-10" }] })]), tA, "month", "2026-11").lines[0].classes, 9);
     eq("Salary · changes", "X13 Salary sheet lists both tutors for Nov after a move", [...T.tutorIdsInPeriod(ctxT([moved]), "month", "2026-11")].sort(), ["tA", "tB"]);
     eq("Salary · changes", "X14 …and only B for December", [...T.tutorIdsInPeriod(ctxT([moved]), "month", "2026-12")], ["tB"]);
@@ -143,6 +146,24 @@ const BASE = process.argv[2] || "http://localhost:8091";
     eq("Fee · changes", "H6 Saving a raise from Nov builds history: Sep–Oct ₹5,000, Nov ₹6,000", ["2026-09", "2026-10", "2026-11", "2026-12"].map((k) => C.feeFor(raised2, [], k).fee), [5000, 5000, 6000, 6000]);
     const stop = S({ joinDate: "2026-09-04", status: "Inactive", leftOn: "2026-10-15" });
     eq("Fee · changes", "H7 Stopped 15 Oct → listed on Fees for Sep & Oct, not Nov", ["2026-08", "2026-09", "2026-10", "2026-11"].map((k) => C.activeInMonth(stop, k)), [false, true, true, false]);
+
+    // ── Client rules (4 Nov 2026) ──
+    s = S({ joinDate: "2026-10-10" });
+    eq("Rules", "R1 Joined 10 Oct → first fee due 10 Oct (at joining)", C.dueDateFor(s, "2026-10").toLocaleDateString("en-CA"), "2026-10-10");
+    eq("Rules", "R1b …Oct paid → next fee due on/before 10 Nov", due(s, [pay(s, 5000, ["2026-10"])]), { kind: "upcoming", label: "Due 10 Nov", balance: 5000, prevDue: 0, due: "2026-11-10" });
+    eq("Rules", "R1c …every month on the 10th (Dec 10, Jan 10)", ["2026-12", "2027-01"].map((k) => C.dueDateFor(s, k).toLocaleDateString("en-CA")), ["2026-12-10", "2027-01-10"]);
+    const r2 = S({ joinDate: "2026-10-10", schedule: MWF, tutorId: "tA", allocatedOn: "2026-10-10", allocationHistory: [{ tutorId: "tA", on: "2026-10-10" }] });
+    eq("Rules", "R2 Joined & tutor allocated 10 Oct, Mon/Wed/Fri 2 h → Oct 9 classes = 18 h × ₹300 = ₹5,400", (() => { const l = T.tutorGross(ctxT([r2]), tA, "month", "2026-10").lines[0]; return [l.classes, l.hours, l.amount]; })(), [9, 18, 5400]);
+    const r3 = { ...r2, ...C.allocationPatch(r2, { id: "tB", name: "Tutor B" }, "2026-10-20", "x") };
+    eq("Rules", "R3 Tutor A 10–19 Oct, Tutor B effective 20 Oct → A: 12,14,16,19 Oct = 4 classes ₹2,400", T.tutorGross(ctxT([r3]), tA, "month", "2026-10").gross, 2400);
+    eq("Rules", "R3b …B: 21,23,26,28,30 Oct = 5 classes ₹3,000 (A + B = 9 classes, nothing lost)", T.tutorGross(ctxT([r3]), tB, "month", "2026-10").gross, 3000);
+    eq("Rules", "R3c Effective date before join date → blocked", C.checkEffectiveDate(r2, "2026-10-05", []) !== "", true);
+    eq("Rules", "R3d Effective date before current tutor's start → blocked", C.checkEffectiveDate({ ...r2, joinDate: "2026-10-01" }, "2026-10-08", []) !== "", true);
+    eq("Rules", "R3e Old tutor's October already paid, effective 25 Oct → blocked (would pay twice)", C.checkEffectiveDate({ ...r2, tutorName: "Tutor A" }, "2026-10-25", [{ tutorId: "tA", periodType: "month", periodKey: "2026-10", status: "Paid", periodLabel: "October 2026" }]) !== "", true);
+    eq("Rules", "R3f …effective 1 Nov → allowed", C.checkEffectiveDate(r2, "2026-11-01", [{ tutorId: "tA", periodType: "month", periodKey: "2026-10", status: "Paid" }]), "");
+    eq("Rules", "R5 Salary payable for October (complete), not November (in progress)", [C.periodComplete("month", "2026-10"), C.periodComplete("month", "2026-11")], [true, false]);
+    eq("Rules", "R5b Default salary month = last completed month", T.payablePeriod(), "2026-10");
+    eq("Rules", "R5c …on 1 Dec, November becomes payable", C.periodComplete("month", "2026-11", new Date(2026, 11, 1, 9)), true);
 
     eq("Salary · week", "W1 Week 2–8 Nov, student joined 4 Nov (Mon/Wed/Fri) → Wed + Fri = 2 classes", T.salaryLine(S({ joinDate: "2026-11-04", schedule: MWF }), R, "week", "2026-11-02").classes, 2);
     return out;

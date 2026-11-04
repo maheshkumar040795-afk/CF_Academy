@@ -140,7 +140,7 @@ const has = (s) => (t) => String(t).replace(/\s+/g, " ").includes(s);
   kavin = await stByName("Kavin");
   await go("allocation?student=" + kavin.id); await p.waitForTimeout(400);
   if (!(await p.locator("#aFrom").count())) { await p.locator("#aList tr, .a-item", { hasText: "Kavin" }).first().click(); await p.waitForTimeout(300); }
-  check("Change-tutor label says 'New tutor starts from'", await p.locator('label[for="aFrom"]').innerText(), "New tutor starts from");
+  check("Change-tutor label says 'New tutor effective from'", await p.locator('label[for="aFrom"]').innerText(), "New tutor effective from");
   await p.fill("#aFrom", "2026-11-16"); await p.dispatchEvent("#aFrom", "change");
   await p.fill("#aTutorQ", "Karthik"); await p.waitForTimeout(400);
   await p.locator('#aDetail [data-assign="tB"]').first().click(); await p.waitForTimeout(600);
@@ -148,33 +148,41 @@ const has = (s) => (t) => String(t).replace(/\s+/g, " ").includes(s);
   check("Kavin history: Priya 20 Oct → Karthik 16 Nov", kavin.allocationHistory.map((h) => [h.tutorId, h.on]), [["tA", "2026-10-20"], ["tB", "2026-11-16"]]);
 
   // ── 6. Tutor salary ──
-  console.log("\n## 6. Tutor salary (Nov 2026)");
-  const openSalary = async (tid, monthLabel) => {
+  console.log("\n## 6. Tutor salary — paid only after the month is complete");
+  const openSalary = async (tid, key) => {
     await go("tutors"); await p.waitForTimeout(400);
     await p.locator(`[data-act=fin][data-id="${tid}"]`).first().click(); await p.waitForTimeout(400);
-    if (monthLabel) { await p.selectOption("#tpKey", { label: monthLabel }); await p.waitForTimeout(300); }
+    if (key) { await p.selectOption("#tpKey", key); await p.waitForTimeout(300); }
   };
   const lineOf = async (name) => (await modal().locator("tr", { hasText: name }).first().innerText()).replace(/\s+/g, " ");
   const net = async () => (await modal().locator(".tp-row.total b").innerText());
 
   await openSalary("tA");
-  check("Priya Nov: Kavin counted till 15 Nov (moved), 6 classes × 2 h = ₹3,600", await lineOf("Kavin"), (t) => has("till 15 Nov 2026")(t) && has("moved to Karthik S")(t) && has("₹ 3,600")(t) && / 6 12 /.test(t));
-  check("Priya Nov: Arjun from 2 Nov Tue/Thu 4–6 PM → 8 classes × 2 h = ₹4,800", await lineOf("Arjun"), (t) => has("from 02 Nov 2026")(t) && has("₹ 4,800")(t) && / 8 16 /.test(t));
-  check("Priya Nov net = ₹8,400", await net(), "₹ 8,400");
+  check("Salary opens on October (last completed month)", await p.inputValue("#tpKey"), "2026-10");
+  check("Priya Oct: Kavin from 20 Oct → 5 classes × 2 h = ₹3,000", await lineOf("Kavin"), (t) => has("₹ 3,000")(t) && / 5 10 /.test(t));
   await modal().locator("#tpLeave").fill("1"); await p.waitForTimeout(200);
-  check("1 leave day → deducts 2 h × ₹300 = ₹600, net ₹7,800", [await modal().locator("#tpDed").inputValue(), await net()], ["600", "₹ 7,800"]);
-  await p.screenshot({ path: SHOTS + "/6-salary-priya-nov.png" });
+  check("1 leave day → deducts 2 h × ₹300 = ₹600, net ₹2,400", [await modal().locator("#tpDed").inputValue(), await net()], ["600", "₹ 2,400"]);
   await modal().locator("[data-save=Paid]").click(); await p.waitForTimeout(600);
-  check("Marked paid → paid view shows ₹7,800", await modal().locator(".note.ok").innerText(), has("Paid ₹ 7,800"));
+  check("October marked paid ₹2,400", await modal().locator(".note.ok").innerText(), has("Paid ₹ 2,400"));
+  await p.selectOption("#tpKey", "2026-11"); await p.waitForTimeout(300);
+  check("November: 'not complete yet' note, no pay buttons", [await modal().locator(".note.warn").first().innerText(), await modal().locator("[data-save]").count()], (v) => has("not complete yet")(v[0]) && has("01 Dec 2026")(v[0]) && v[1] === 0);
+  check("Priya Nov estimate: Kavin till 15 Nov (moved) 6 classes ₹3,600", await lineOf("Kavin"), (t) => has("till 15 Nov 2026")(t) && has("moved to Karthik S")(t) && has("₹ 3,600")(t) && / 6 12 /.test(t));
+  check("Priya Nov estimate: Arjun from 2 Nov Tue/Thu 8 classes ₹4,800", await lineOf("Arjun"), (t) => has("from 02 Nov 2026")(t) && has("₹ 4,800")(t));
+  check("Nov total labelled 'Estimated salary' ₹8,400", [await modal().locator(".tp-row.total span").innerText(), await net()], ["Estimated salary", "₹ 8,400"]);
+  await p.screenshot({ path: SHOTS + "/6-salary-nov-in-progress.png" });
   await p.keyboard.press("Escape");
 
-  await openSalary("tA", "October 2026");
-  check("Priya Oct: Kavin from 20 Oct → 5 classes = ₹3,000", await lineOf("Kavin"), (t) => has("₹ 3,000")(t) && / 5 10 /.test(t));
+  await openSalary("tB", "2026-11");
+  check("Karthik Nov (₹250/h): Kavin effective 16 Nov → 7 classes ₹3,500", await lineOf("Kavin"), (t) => has("from 16 Nov 2026")(t) && has("₹ 3,500")(t) && / 7 14 /.test(t));
   await p.keyboard.press("Escape");
 
-  await openSalary("tB");
-  check("Karthik Nov (₹250/h): Kavin from 16 Nov → 7 classes × 2 h = ₹3,500", await lineOf("Kavin"), (t) => has("from 16 Nov 2026")(t) && has("₹ 3,500")(t) && / 7 14 /.test(t));
-  await p.keyboard.press("Escape");
+  // effective date guard
+  arjun = await stByName("Arjun");
+  await go("allocation?student=" + arjun.id); await p.waitForTimeout(400);
+  await p.fill("#aFrom", "2026-11-01"); await p.dispatchEvent("#aFrom", "change");
+  await p.fill("#aTutorQ", "Karthik"); await p.waitForTimeout(400);
+  await p.locator('#aDetail [data-assign="tB"]').first().click(); await p.waitForTimeout(500);
+  check("Change effective 1 Nov (before Priya's start 2 Nov) → blocked", [await p.locator(".toast").last().innerText(), (await stByName("Arjun")).tutorId], (v) => has("on or after")(v[0]) && v[1] === "tA");
 
   // ── 7. Kavin stops: last class 20 Nov ──
   console.log("\n## 7. Student stops (last class 20 Nov)");
@@ -187,20 +195,42 @@ const has = (s) => (t) => String(t).replace(/\s+/g, " ").includes(s);
   await save("Save changes");
   kavin = await stByName("Kavin");
   check("Saved: Inactive, last class 20 Nov", [kavin.status, kavin.leftOn], ["Inactive", "2026-11-20"]);
-  await openSalary("tB");
+  await openSalary("tB", "2026-11");
   check("Karthik Nov: Kavin 16–20 Nov → 3 classes = ₹1,500 (stopped)", await lineOf("Kavin"), (t) => has("till 20 Nov 2026")(t) && has("stopped")(t) && has("₹ 1,500")(t) && / 3 6 /.test(t));
   await p.keyboard.press("Escape");
   await go("fees");
   check("Fees (Nov): stopped student still listed with ₹500 balance", await p.locator("#fList tr", { hasText: "Kavin" }).innerText(), has("₹ 500"));
 
-  // ── 8. Salary sheet ──
-  console.log("\n## 8. Salary sheet (Nov)");
+  // ── 8. Old data: student marked Inactive before 'last class date' existed ──
+  console.log("\n## 8. Old Inactive student (no last class date)");
+  await p.evaluate(async () => {
+    const st = JSON.parse(localStorage.getItem("cfa_demo_v1"));
+    st.students.old1 = { id: "old1", name: "Old Student", phone: "9876500009", monthlyFee: 3000, joinDate: "2026-09-01", schedule: "Mon, Wed, Fri · 6 – 8 PM",
+      tutorId: "tA", tutorName: "Priya Raman", allocatedOn: "2026-09-01", status: "Inactive", createdAt: new Date(2026, 8, 1).getTime(), updatedAt: new Date(2026, 9, 15, 11).getTime() };
+    localStorage.setItem("cfa_demo_v1", JSON.stringify(st));
+  });
+  await p.reload(); await p.waitForTimeout(1500);
+  const old = await stByName("Old Student");
+  check("Auto-filled last class = 15 Oct (day it was marked Inactive), flagged estimated", [old.leftOn, old.leftOnAuto], ["2026-10-15", true]);
+  await go("students"); await clearQ();
+  await p.selectOption("#sStatus", "Inactive"); await p.waitForTimeout(300);
+  check("Students list shows 'Last class 15 Oct 2026 (estimated)'", await p.locator("#sList tr", { hasText: "Old Student" }).innerText(), has("Last class 15 Oct 2026 (estimated)"));
+  await p.locator("#sList tr", { hasText: "Old Student" }).locator("[data-act=edit]").click(); await p.waitForTimeout(300);
+  check("Edit form says the date is estimated", await modal().locator("#leftRow").innerText(), has("Estimated"));
+  await p.screenshot({ path: SHOTS + "/8-old-inactive.png" });
+  await p.keyboard.press("Escape");
+  await p.selectOption("#sStatus", "Active");
+
+  // ── 9. Salary sheet ──
+  console.log("\n## 9. Salary sheet");
   await go("tutors");
   await p.click("#tSalary"); await p.waitForTimeout(400);
   const row = async (n) => (await modal().locator("#ssList tr", { hasText: n }).innerText()).replace(/\s+/g, " ");
-  check("Sheet: Priya Paid ₹7,800", await row("Priya"), (l) => has("₹ 7,800")(l) && has("Paid")(l));
-  check("Sheet: Karthik ₹1,500 not paid (student stopped 20 Nov still listed)", await row("Karthik"), (l) => has("₹ 1,500")(l) && has("Not paid")(l));
-  await p.screenshot({ path: SHOTS + "/8-salary-sheet.png" });
+  check("Sheet opens on October", await p.inputValue("#ssKey"), "2026-10");
+  check("Oct: Priya Paid ₹2,400 (Kavin 5 classes − 1 leave day; Old Student counted only if saved later)", await row("Priya"), (l) => has("Paid")(l));
+  await p.selectOption("#ssKey", "2026-11"); await p.waitForTimeout(300);
+  check("Nov: Karthik ₹1,500 'In progress'", await row("Karthik"), (l) => has("₹ 1,500")(l) && has("In progress")(l));
+  await p.screenshot({ path: SHOTS + "/9-salary-sheet.png" });
 
   console.log(errs.length ? "\nPAGE ERRORS:\n" + errs.join("\n") : "\nno page errors");
   const pass = results.filter((r) => r.ok).length;

@@ -2,7 +2,7 @@
 import { put, remove } from "../db.js";
 import { SITE, CLASSES, BOARDS, CITIES } from "../site-config.js";
 import { $, $$, esc, fmtPhone, fmtDate, normPhone, inr, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
-import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay, feeParts, feeHTML, gstFieldsHTML, bindGst, GST_RATE, feeHistoryAfterChange, allocationPatch } from "./common.js";
+import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay, feeParts, feeHTML, gstFieldsHTML, bindGst, GST_RATE, feeHistoryAfterChange, allocationPatch, checkEffectiveDate } from "./common.js";
 
 const st = { q: "", status: "Active", tutor: "", fee: "" };
 let root, ctx, openedParam = null;
@@ -101,7 +101,7 @@ function renderList() {
           <td>${s.tutorName ? esc(s.tutorName) : `<a class="pill p-due" href="#/allocation?student=${esc(s.id)}" style="text-decoration:none">Allocate tutor</a>`}<span class="sub">${esc(s.mode === "Online tuition" ? "Online" : "Home")} · ${esc([s.area, s.city].filter(Boolean).join(", "))}</span></td>
           <td>${esc(s.schedule || "—")}</td>
           <td class="num">${feeHTML(s, inr)}</td>
-          <td>${(s.status || "Active") === "Active" ? `<div class="fee-cell">${feeIcon(s, d)}<span>${feeDuePill(d)}${d.status === "Partial" ? `<span class="sub">Bal ${inr(d.balance)}</span>` : ""}${d.prevDue ? `<span class="sub" style="color:var(--err)">+ ${inr(d.prevDue)} last month</span>` : ""}</span></div>` : '<span class="pill p-lost">Inactive</span>'}</td>
+          <td>${(s.status || "Active") === "Active" ? `<div class="fee-cell">${feeIcon(s, d)}<span>${feeDuePill(d)}${d.status === "Partial" ? `<span class="sub">Bal ${inr(d.balance)}</span>` : ""}${d.prevDue ? `<span class="sub" style="color:var(--err)">+ ${inr(d.prevDue)} last month</span>` : ""}</span></div>` : `<span class="pill p-lost">Inactive</span>${s.leftOn ? `<span class="sub">Last class ${esc(fmtDate(s.leftOn))}${s.leftOnAuto ? " (estimated)" : ""}</span>` : ""}`}</td>
           <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-act="view" data-id="${esc(s.id)}">View</button> <button class="btn btn-ghost btn-sm" data-act="edit" data-id="${esc(s.id)}">Edit</button></td>
         </tr>`;
       }).join("")}</tbody></table></div>` : `<div class="panel empty">${ctx.students.length ? "No students match these filters." : "No students yet. Convert a booking from Bookings / Leads, or add a student here."}</div>`;
@@ -213,14 +213,14 @@ function editStudent(s) {
         <div class="fld"><label>City</label><select name="city">${options(CITIES, v.city, "—")}</select></div>
         <div class="fld full"><label>Address</label><input name="address" value="${esc(v.address)}"></div>
         <div class="fld"><label>Tutor</label>${tutorPicker(s)}</div>
-        <div class="fld"><label>Tutor teaching from</label><input name="tutorFrom" type="date" value="${esc(v.allocatedOn || v.joinDate || todayISO())}"><span class="hint">Tutor salary is counted from this date</span></div>
+        <div class="fld"><label>Tutor effective from</label><input name="tutorFrom" type="date" value="${esc(v.allocatedOn || v.joinDate || todayISO())}"><span class="hint">Tutor salary is counted from this date. When you change the tutor, set the date the new tutor starts — the old tutor is paid up to the day before.</span></div>
         ${gstFieldsHTML(v)}
         ${s ? `<div class="fld full" id="feeFromRow" hidden><label>Fee change applies from *</label><select name="feeFrom">${feeMonthOptions(s)}</select><span class="hint">Months before this keep the old fee — receipts already paid stay “Paid”. Choose the joining month to correct a wrong fee for all months.</span></div>` : ""}
         <div class="fld"><label>Join date</label><input name="joinDate" type="date" value="${esc(v.joinDate)}"></div>
         <div class="fld"><label>Fee due day (1–31)</label><input name="feeDueDay" type="number" min="1" max="31" value="${esc(v.feeDueDay || "")}" placeholder="Same day as joining"></div>
         <div class="fld"><label>Hours per class</label><input name="classHours" type="number" min="0" step="0.25" value="${esc(v.classHours || "")}" placeholder="From schedule, e.g. 1"></div>
         <div class="fld"><label>Status</label><select name="status">${options(["Active", "Inactive"], v.status || "Active")}</select></div>
-        <div class="fld" id="leftRow" hidden><label>Last class date *</label><input name="leftOn" type="date" value="${esc(v.leftOn || todayISO())}"><span class="hint">Tutor is paid up to this date. Fees stay due for months studied.</span></div>
+        <div class="fld" id="leftRow" hidden><label>Last class date *</label><input name="leftOn" type="date" value="${esc(v.leftOn || todayISO())}"><span class="hint">${v.leftOnAuto ? "<b style=\"color:var(--warn,#B45309)\">Estimated</b> from the day this student was marked Inactive — please check and save. " : ""}Tutor is paid up to this date. Fees stay due for months studied.</span></div>
       </div>`,
     actions: [
       ...(s && ctx.isAdmin ? [{ label: "Delete", kind: "btn-danger", onClick: async () => {
@@ -246,10 +246,15 @@ function editStudent(s) {
           if (f.status === "Inactive") {
             if (!f.leftOn) { toast("Enter the last class date", "bad"); return false; }
             if (f.joinDate && f.leftOn < f.joinDate) { toast("Last class date is before the join date", "bad"); return false; }
-          } else f.leftOn = "";
+            f.leftOnAuto = false; // checked by the admin
+          } else { f.leftOn = ""; f.leftOnAuto = false; }
           // tutor: keep every tutor's stint so each tutor is paid for the days they taught
           let alloc = {};
           const base = s || { allocationHistory: [] };
+          if (s && s.tutorId && tut.tutorId !== s.tutorId) {
+            const bad = checkEffectiveDate({ ...s, joinDate: f.joinDate || s.joinDate }, tutorFrom, ctx.tutorPayouts);
+            if (bad) { toast(bad, "bad"); return false; }
+          }
           if (tut.tutorId && (!s || s.tutorId !== tut.tutorId)) alloc = allocationPatch(base, { id: tut.tutorId, name: tut.tutorName, phone: tut.tutorPhone }, tutorFrom, ctx.user.email);
           else if (s && !tut.tutorId && s.tutorId) alloc = allocationPatch(s, null, tutorFrom, ctx.user.email);
           else if (s && tut.tutorId && tutorFrom !== (s.allocatedOn || "")) {

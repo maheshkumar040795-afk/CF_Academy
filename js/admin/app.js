@@ -1,5 +1,6 @@
 // CF Academy admin — app shell: login, navigation, live data
-import { isDemo, adminLogin, adminLogout, onAdminAuth, resetPassword, watch, list, resetDemoData, getRole } from "../db.js";
+import { isDemo, adminLogin, adminLogout, onAdminAuth, resetPassword, watch, list, resetDemoData, getRole, put } from "../db.js";
+import { estimatedLastClass } from "./common.js";
 import { $, $$, esc, toast, modal, ICONS } from "./ui.js";
 import dashboard from "./dashboard.js";
 import bookings from "./bookings.js";
@@ -82,9 +83,21 @@ function startData() {
       if (col === "bookings") notifyNew(rows);
       ctx[col] = rows;
       ctx.loaded[col] = true;
+      if (col === "students") backfillLastClass(rows);
       emit(col);
       updateNavCounts();
     }, onErr).then((u) => unsubs.push(u));
+  });
+}
+// Students marked Inactive before "Last class date" existed: save the estimated date once
+// (the day the record was last saved = when it was marked Inactive) so tutor salary and fees
+// count their classes. Shown as "estimated" in Edit student until an admin checks it.
+const backfilled = new Set();
+function backfillLastClass(rows) {
+  if (!ctx.isAdmin) return;
+  rows.filter((s) => (s.status || "Active") !== "Active" && !s.leftOn && !backfilled.has(s.id)).forEach((s) => {
+    backfilled.add(s.id);
+    put("students", { id: s.id, leftOn: estimatedLastClass(s), leftOnAuto: true }).catch(() => backfilled.delete(s.id));
   });
 }
 function stopData() {
