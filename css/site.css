@@ -561,7 +561,9 @@ section.block.alt { background: var(--bg-2); }
   .ex-group + .ex-group { border-top: 1px solid var(--line); padding-top: 18px; }
   .prog-head { margin-top: 40px; }
   .book-form { padding: 22px 18px; border-radius: 16px; }
-  .brand small { display: none; }
+  .brand { gap: 10px; min-width: 0; }
+  .brand > span { min-width: 0; }
+  .brand small { display: block; font-size: 11px; line-height: 1.3; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stat b { font-size: 24px; }
   .quick-card { grid-template-columns: 1fr; padding: 20px; }
   .mode-toggle { grid-column: auto; }
@@ -948,3 +950,5 @@ section.block.alt { background: var(--bg-2); }
 .site-footer .foot-seo span { border: 1px solid #7A3D4F; border-radius: 999px; padding: 4px 12px; color: #F3DDE3; }
 .site-footer .dev-by a { color: var(--accent-light); font-weight: 600; }
 .site-footer .dev-by a:hover { text-decoration: underline; }
+
+@media (max-width: 360px) { .brand small { font-size: 10.5px; white-space: normal; overflow: visible; } .brand img { width: 46px; height: 46px; } }
