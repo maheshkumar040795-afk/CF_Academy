@@ -2,7 +2,7 @@
 import { put } from "../db.js";
 import { SUBJECTS, CITIES, SITE } from "../site-config.js";
 import { $, $$, esc, fmtPhone, fmtDate, normPhone, waLink, toast, options, debounce, todayISO, exportXlsx, inr, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
-import { matchTutors, canonSubjects, monthlyTotal } from "./common.js";
+import { matchTutors, canonSubjects, monthlyTotal, allocationPatch } from "./common.js";
 
 const st = { view: "students", tab: "Needs tutor", q: "", subject: "", city: "", selected: null, tutorQ: "", tq: "" };
 let root, ctx;
@@ -183,6 +183,8 @@ function renderDetail() {
         <a class="btn btn-wa btn-sm" href="${esc(waLink(s.phone, parentMsgFor(s, current)))}" target="_blank" rel="noopener">${ICONS.wa}Send tutor details to parent</a>
       </div>` : `<div class="note warn">No tutor allocated yet. Pick one from the suggestions below.</div>`}
 
+    <div class="fld" style="max-width:260px;margin-top:14px"><label for="aFrom">${s.tutorId ? "New tutor starts from" : "Tutor starts from"}</label><input id="aFrom" type="date" value="${esc(st.from || todayISO())}"><span class="hint">Tutor salary is counted from this date${s.tutorId ? "; the current tutor is paid up to the day before" : ""}.</span></div>
+
     <h3>Best-matched tutors <span class="sub" style="display:inline;font-weight:400">· subject${s.mode === "Online tuition" ? " + online" : " + area/city"} + class + experience</span></h3>
     ${!ready ? `<p class="sub">Loading tutors…</p>` : !ctx.tutors.length ? `<div class="note warn">No tutors yet. <a href="#/tutors">Import the tutor Excel</a> first.</div>` :
       matches.length ? matches.map((m) => card(m.t, m.hits, false)).join("") : `<div class="note">No tutor matches this subject. Search all tutors below.</div>`}
@@ -194,6 +196,7 @@ function renderDetail() {
       <div class="table-wrap"><table class="t"><thead><tr><th>Tutor</th><th>From</th><th>By</th></tr></thead>
       <tbody>${history.map((h) => `<tr><td>${esc(h.tutorName || "Removed")}</td><td>${esc(fmtDate(h.on))}</td><td>${esc(String(h.by || "").split("@")[0])}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
 
+  $("#aFrom", box).addEventListener("change", (e) => { st.from = e.target.value; });
   const q = $("#aTutorQ", box);
   q.addEventListener("input", debounce(() => {
     st.tutorQ = q.value.trim();
@@ -203,10 +206,9 @@ function renderDetail() {
 }
 
 async function allocate(s, t) {
-  const hist = (s.allocationHistory || []).concat([{ tutorId: t ? t.id : "", tutorName: t ? t.name : "", on: todayISO(), by: ctx.user.email }]).slice(-20);
-  const patch = t
-    ? { id: s.id, tutorId: t.id, tutorName: t.name, tutorPhone: normPhone(t.phone), allocatedOn: todayISO(), allocatedBy: ctx.user.email, allocationHistory: hist }
-    : { id: s.id, tutorId: "", tutorName: "", tutorPhone: "", allocatedOn: "", allocationHistory: hist };
+  const inp = $("#aFrom", root);
+  const on = (inp && inp.value) || todayISO();
+  const patch = { id: s.id, ...allocationPatch(s, t ? { ...t, phone: normPhone(t.phone) } : null, on, ctx.user.email) };
   await put("students", patch);
   if (s.bookingId) {
     put("bookings", { id: s.bookingId, tutorId: patch.tutorId, tutorName: patch.tutorName, tutorPhone: patch.tutorPhone }).catch(() => {});
@@ -223,7 +225,7 @@ async function onDetailClick(e) {
     a.disabled = true;
     try {
       await allocate(s, t);
-      st.tutorQ = "";
+      st.tutorQ = ""; st.from = "";
       toast(`${t.name} allocated to ${s.name}. Send the details on WhatsApp.`, "ok");
     } catch (ex) { toast(ex.message, "bad"); a.disabled = false; }
   }

@@ -4,5 +4,6 @@ Allow: /
 Disallow: /admin.html
 Disallow: /templates/
 Disallow: /apps-script/
+Disallow: /tests/
 
 Sitemap: https://cfacademy.in/sitemap.xml

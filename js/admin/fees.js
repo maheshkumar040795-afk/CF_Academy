@@ -1,15 +1,14 @@
 // Fees — month view: who paid, who is due, WhatsApp reminders
 import { SITE } from "../site-config.js";
 import { $, $$, esc, fmtPhone, fmtDate, inr, waLink, options, exportXlsx, monthKey, monthLabel, lastMonths, askDateRange, monthsInRange, rangeFileTag, ICONS } from "./ui.js";
-import { feeFor, feePill, feeParts, GST_RATE } from "./common.js";
+import { feeFor, feePill, feeParts, activeInMonth, GST_RATE } from "./common.js";
 
 const st = { month: monthKey(), status: "", q: "" };
 let root, ctx;
 
 function studentsFor(mk) {
-  // active students who had joined by the end of that month
-  const end = mk + "-31";
-  return ctx.students.filter((s) => (s.status || "Active") === "Active" && (!s.joinDate || s.joinDate <= end));
+  // students studying in that month: joined by its end, and active or stopped on/after its 1st
+  return ctx.students.filter((s) => activeInMonth(s, mk));
 }
 
 function render(view, c) {
@@ -88,7 +87,7 @@ async function exportFees() {
   months.forEach((mk) => {
     let exp = 0, got = 0, bal = 0;
     studentsFor(mk).forEach((s) => {
-      const f = feeFor(s, ctx.payments, mk), fp = feeParts(s);
+      const f = feeFor(s, ctx.payments, mk), fp = feeParts(s, mk);
       exp += f.fee; got += Math.min(f.paid, f.fee || f.paid); bal += f.balance;
       rows.push({
         "Month": monthLabel(mk), "Student": s.name, "Parent": s.parentName, "Mobile": s.phone, "Class": s.studentClass, "Tutor": s.tutorName || "",

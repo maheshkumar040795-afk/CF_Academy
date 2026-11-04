@@ -84,10 +84,10 @@ function render(view, c, params) {
 
 function fillStudents() {
   const sel = $("#pStudent", root);
-  const list = ctx.students.filter((s) => (s.status || "Active") === "Active" || s.id === st.studentId)
+  const list = ctx.students.filter((s) => (s.status || "Active") === "Active" || s.leftOn || s.id === st.studentId)
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   sel.innerHTML = `<option value="">Choose student</option>` + list.map((s) =>
-    `<option value="${esc(s.id)}" ${s.id === st.studentId ? "selected" : ""}>${esc(s.name)} · ${esc(s.studentClass || "")} · ${esc(fmtPhone(s.phone))}</option>`).join("");
+    `<option value="${esc(s.id)}" ${s.id === st.studentId ? "selected" : ""}>${esc(s.name)} · ${esc(s.studentClass || "")} · ${esc(fmtPhone(s.phone))}${(s.status || "Active") !== "Active" ? " · stopped" : ""}</option>`).join("");
 }
 
 function selectedMonths() {
@@ -105,11 +105,11 @@ function updateInfo(setAmount) {
   const dues = keys.map((k) => feeFor(s, ctx.payments, k));
   const balance = dues.reduce((a, d) => a + d.balance, 0);
   const paidAny = dues.some((d) => d.paid > 0);
-  const fp = feeParts(s);
+  const fp = feeParts(s, keys[0]);
   info.className = "note " + (balance === 0 && fp.total ? "ok" : "");
   info.innerHTML = `Tutor: <b>${esc(s.tutorName || "Not assigned")}</b> · Monthly fee <b>${inr(fp.total)}</b>${fp.on ? ` <span class="sub" style="display:inline">(${inr(fp.base)} + ${GST_RATE}% GST)</span>` : ""}<br>` +
     (balance === 0 && fp.total ? `${esc(monthsLabel(keys))} is already fully paid.` : `Balance for ${esc(monthsLabel(keys))}: <b>${inr(balance)}</b>${paidAny ? " (part paid earlier)" : ""}`);
-  if (setAmount) $("#pAmount", root).value = balance || monthlyTotal(s) * keys.length || "";
+  if (setAmount) $("#pAmount", root).value = balance || keys.reduce((a, k) => a + monthlyTotal(s, k), 0) || "";
 }
 
 async function savePayment(e) {
@@ -130,7 +130,7 @@ async function savePayment(e) {
       note: $("#pNote", root).value.trim(), monthKeys: keys, monthsLabel: monthsLabel(keys),
       studentId: s.id, studentName: s.name, parentName: s.parentName || "", phone: s.phone || "",
       studentClass: s.studentClass || "", board: s.board || "", subjects: s.subjects || "", mode: s.mode || "",
-      tutorName: s.tutorName || "", monthlyFee: Number(s.monthlyFee) || 0, gst: !!s.gst, ...(s.gst ? { gstRate: GST_RATE, ...gstFields(amount) } : {}), collectedBy: ctx.user.email
+      tutorName: s.tutorName || "", monthlyFee: feeParts(s, keys[0]).base, gst: feeParts(s, keys[0]).on, ...(feeParts(s, keys[0]).on ? { gstRate: GST_RATE, ...gstFields(amount) } : {}), collectedBy: ctx.user.email
     });
     st.shownId = id;
     $("#pRef", root).value = ""; $("#pNote", root).value = "";

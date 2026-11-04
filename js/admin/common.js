@@ -122,12 +122,40 @@ export function matchTutors(b, tutors, limit = 8) {
 // 18% GST is added: ₹5,000 → ₹5,000 + ₹900 GST = ₹5,900 payable every month.
 export const GST_RATE = 18;
 export function gstOf(base) { return Math.round((Number(base) || 0) * GST_RATE) / 100; }
-export function feeParts(s) {
-  const base = Number(s && s.monthlyFee) || 0;
-  const gst = s && s.gst ? gstOf(base) : 0;
-  return { base, gst, total: Math.round((base + gst) * 100) / 100, on: !!(s && s.gst) };
+// Fee history: when the fee or GST changes, the new values apply from a chosen month and the
+// months before keep the old fee. student.feeHistory = [{ from: "YYYY-MM", monthlyFee, gst }]
+// (no history = the current fee applies to every month).
+export function feeAt(s, mk) {
+  const h = ((s && s.feeHistory) || []).filter((x) => x && x.from).slice().sort((a, b) => a.from.localeCompare(b.from));
+  if (!h.length || !mk) return { monthlyFee: s && s.monthlyFee, gst: !!(s && s.gst) };
+  // the latest entry always follows the student's current fee / GST
+  const last = { ...h[h.length - 1], monthlyFee: s.monthlyFee, gst: !!s.gst };
+  h[h.length - 1] = last;
+  let cur = h[0];
+  for (const x of h) if (x.from <= mk) cur = x;
+  return { monthlyFee: cur.monthlyFee, gst: !!cur.gst };
 }
-export const monthlyTotal = (s) => feeParts(s).total;
+export function feeHistoryAfterChange(old, newFee, newGst, fromMk) {
+  let h = ((old && old.feeHistory) || []).filter((x) => x && x.from).slice();
+  if (!h.length) h = [{ from: String(old.joinDate || "2000-01").slice(0, 7), monthlyFee: Number(old.monthlyFee) || 0, gst: !!old.gst }];
+  h = h.filter((x) => x.from < fromMk);
+  h.push({ from: fromMk, monthlyFee: Number(newFee) || 0, gst: !!newGst });
+  return h;
+}
+// mk optional: the fee that applied in that month
+export function feeParts(s, mk) {
+  const f = mk ? feeAt(s, mk) : { monthlyFee: s && s.monthlyFee, gst: !!(s && s.gst) };
+  const base = Number(f.monthlyFee) || 0;
+  const gst = f.gst ? gstOf(base) : 0;
+  return { base, gst, total: Math.round((base + gst) * 100) / 100, on: !!f.gst };
+}
+export const monthlyTotal = (s, mk) => feeParts(s, mk).total;
+// Was the student studying in that month? (joined by its end; active, or stopped on/after its 1st)
+export function activeInMonth(s, mk) {
+  if (s.joinDate && s.joinDate > mk + "-31") return false;
+  if ((s.status || "Active") === "Active") return true;
+  return !!s.leftOn && s.leftOn >= mk + "-01";
+}
 // "₹ 5,900" with a small "₹ 5,000 + 18% GST" line underneath (for tables / cards)
 export function feeHTML(s, inr) {
   const p = feeParts(s);
@@ -166,7 +194,7 @@ export function splitGst(amount) {
 
 // Fee status of a student for a month key (YYYY-MM) — fee includes GST when it is on
 export function feeFor(student, payments, mk) {
-  const fee = monthlyTotal(student);
+  const fee = monthlyTotal(student, mk);
   const paid = payments
     .filter((p) => p.studentId === student.id && (p.monthKeys || [p.monthKey]).includes(mk))
     .reduce((sum, p) => sum + (Number(p.amount) || 0) / Math.max(1, (p.monthKeys || [p.monthKey]).length), 0);
@@ -228,4 +256,18 @@ export function feeDuePill(d) {
 export function feePill(st) {
   const cls = { Paid: "p-paid", Partial: "p-partial", Due: "p-due", Overdue: "p-late" }[st] || "p-lost";
   return `<span class="pill ${cls}">${esc(st)}</span>`;
+}
+
+// ── Tutor allocation with history (used by Student Allocation and Edit student) ──
+// Keeps every tutor's stint so tutor salary pays each tutor for the days they taught.
+// t = { id, name, phone } or null (remove tutor); on = "YYYY-MM-DD" the change takes effect
+export function allocationPatch(s, t, on, by) {
+  let hist = (s.allocationHistory || []).slice();
+  // older students have no history yet: record the current tutor's stint first
+  if (!hist.length && s.tutorId) hist.push({ tutorId: s.tutorId, tutorName: s.tutorName || "", on: s.allocatedOn || s.joinDate || on, by: "" });
+  hist.push({ tutorId: t ? t.id : "", tutorName: t ? t.name : "", on, by: by || "" });
+  hist = hist.slice(-40);
+  return t
+    ? { tutorId: t.id, tutorName: t.name, tutorPhone: String(t.phone || "").replace(/\D/g, "").slice(-10), allocatedOn: on, allocatedBy: by || "", allocationHistory: hist }
+    : { tutorId: "", tutorName: "", tutorPhone: "", allocatedOn: "", allocationHistory: hist };
 }

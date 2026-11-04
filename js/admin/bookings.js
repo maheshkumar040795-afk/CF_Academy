@@ -279,6 +279,7 @@ function convertToStudent(b) {
           const sid = await put("students", {
             ...f, monthlyFee: Number(f.monthlyFee), gst: !!f.gst, phone: normPhone(f.phone), status: "Active",
             tutorId: b.tutorId || "", tutorName: b.tutorName || "", tutorPhone: b.tutorPhone || "",
+            ...(b.tutorId ? { allocatedOn: f.joinDate || todayISO(), allocationHistory: [{ tutorId: b.tutorId, tutorName: b.tutorName || "", on: f.joinDate || todayISO(), by: ctx.user.email }] } : {}),
             bookingId: b.id, bookingNo: b.bookingNo || "", email: b.email || "", address: b.address || ""
           });
           await put("bookings", { id: b.id, status: "Converted", studentId: sid });

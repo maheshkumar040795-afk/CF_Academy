@@ -2,7 +2,7 @@
 import { put, remove } from "../db.js";
 import { SITE, CLASSES, BOARDS, CITIES } from "../site-config.js";
 import { $, $$, esc, fmtPhone, fmtDate, normPhone, inr, waLink, toast, modal, confirmBox, readFields, options, exportXlsx, debounce, todayISO, monthKey, monthLabel, askDateRange, inRangeISO, rangeFileTag, ICONS } from "./ui.js";
-import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay, feeParts, feeHTML, gstFieldsHTML, bindGst, GST_RATE } from "./common.js";
+import { feeFor, feePill, feeDue, feeDuePill, dueDateFor, dueDay, feeParts, feeHTML, gstFieldsHTML, bindGst, GST_RATE, feeHistoryAfterChange, allocationPatch } from "./common.js";
 
 const st = { q: "", status: "Active", tutor: "", fee: "" };
 let root, ctx, openedParam = null;
@@ -212,12 +212,15 @@ function editStudent(s) {
         <div class="fld"><label>Area</label><input name="area" value="${esc(v.area)}"></div>
         <div class="fld"><label>City</label><select name="city">${options(CITIES, v.city, "—")}</select></div>
         <div class="fld full"><label>Address</label><input name="address" value="${esc(v.address)}"></div>
-        <div class="fld full"><label>Tutor</label>${tutorPicker(s)}</div>
+        <div class="fld"><label>Tutor</label>${tutorPicker(s)}</div>
+        <div class="fld"><label>Tutor teaching from</label><input name="tutorFrom" type="date" value="${esc(v.allocatedOn || v.joinDate || todayISO())}"><span class="hint">Tutor salary is counted from this date</span></div>
         ${gstFieldsHTML(v)}
+        ${s ? `<div class="fld full" id="feeFromRow" hidden><label>Fee change applies from *</label><select name="feeFrom">${feeMonthOptions(s)}</select><span class="hint">Months before this keep the old fee — receipts already paid stay “Paid”. Choose the joining month to correct a wrong fee for all months.</span></div>` : ""}
         <div class="fld"><label>Join date</label><input name="joinDate" type="date" value="${esc(v.joinDate)}"></div>
         <div class="fld"><label>Fee due day (1–31)</label><input name="feeDueDay" type="number" min="1" max="31" value="${esc(v.feeDueDay || "")}" placeholder="Same day as joining"></div>
         <div class="fld"><label>Hours per class</label><input name="classHours" type="number" min="0" step="0.25" value="${esc(v.classHours || "")}" placeholder="From schedule, e.g. 1"></div>
         <div class="fld"><label>Status</label><select name="status">${options(["Active", "Inactive"], v.status || "Active")}</select></div>
+        <div class="fld" id="leftRow" hidden><label>Last class date *</label><input name="leftOn" type="date" value="${esc(v.leftOn || todayISO())}"><span class="hint">Tutor is paid up to this date. Fees stay due for months studied.</span></div>
       </div>`,
     actions: [
       ...(s && ctx.isAdmin ? [{ label: "Delete", kind: "btn-danger", onClick: async () => {
@@ -237,15 +240,56 @@ function editStudent(s) {
           f.gst = !!f.gst;
           if (f.feeDueDay !== "") { f.feeDueDay = Math.round(Number(f.feeDueDay)); if (!(f.feeDueDay >= 1 && f.feeDueDay <= 31)) { toast("Fee due day must be 1–31", "bad"); return false; } }
           if (f.classHours !== "") f.classHours = Number(f.classHours) || 0;
-          if (tut.tutorId && (!s || s.tutorId !== tut.tutorId)) tut.allocatedOn = todayISO();
+          const tutorFrom = f.tutorFrom || todayISO(); delete f.tutorFrom;
+          const feeFrom = f.feeFrom; delete f.feeFrom;
+          // stopped students keep their last class date (tutor salary + fees up to that month)
+          if (f.status === "Inactive") {
+            if (!f.leftOn) { toast("Enter the last class date", "bad"); return false; }
+            if (f.joinDate && f.leftOn < f.joinDate) { toast("Last class date is before the join date", "bad"); return false; }
+          } else f.leftOn = "";
+          // tutor: keep every tutor's stint so each tutor is paid for the days they taught
+          let alloc = {};
+          const base = s || { allocationHistory: [] };
+          if (tut.tutorId && (!s || s.tutorId !== tut.tutorId)) alloc = allocationPatch(base, { id: tut.tutorId, name: tut.tutorName, phone: tut.tutorPhone }, tutorFrom, ctx.user.email);
+          else if (s && !tut.tutorId && s.tutorId) alloc = allocationPatch(s, null, tutorFrom, ctx.user.email);
+          else if (s && tut.tutorId && tutorFrom !== (s.allocatedOn || "")) {
+            // same tutor, start date corrected
+            const hist = (s.allocationHistory || []).slice();
+            if (hist.length && hist[hist.length - 1].tutorId === tut.tutorId) hist[hist.length - 1] = { ...hist[hist.length - 1], on: tutorFrom };
+            alloc = { allocatedOn: tutorFrom, allocationHistory: hist };
+          }
+          // fee / GST changed: new fee applies from the chosen month, older months keep the old fee
+          if (s && (Number(s.monthlyFee) !== f.monthlyFee || !!s.gst !== f.gst)) {
+            f.feeHistory = feeHistoryAfterChange(s, f.monthlyFee, f.gst, feeFrom || monthKey());
+          }
           // students added here (not converted from a booking) are counted as direct admissions in Reports
-          await put("students", s ? { ...f, ...tut, id: s.id } : { ...f, ...tut, source: "Direct (admin)" });
+          await put("students", s ? { ...f, ...tut, ...alloc, id: s.id } : { ...f, ...tut, ...alloc, source: "Direct (admin)" });
           toast(s ? "Student updated" : "Student added", "ok");
         }
       }
     ],
-    onOpen: (m) => bindGst(m, inr)
+    onOpen: (m) => {
+      bindGst(m, inr);
+      const sync = () => {
+        const fee = $('[name="monthlyFee"]', m), gst = $('[name="gst"]', m), row = $("#feeFromRow", m);
+        if (row) row.hidden = !(Number(fee.value) !== Number(s.monthlyFee) || gst.checked !== !!s.gst);
+        $("#leftRow", m).hidden = $('[name="status"]', m).value !== "Inactive";
+      };
+      ["input", "change"].forEach((ev) => m.addEventListener(ev, sync));
+      sync();
+    }
   });
+}
+
+// months for "Fee change applies from": joining month … 2 months ahead (max 13 choices)
+function feeMonthOptions(s) {
+  const now = new Date(), cur = monthKey(now);
+  const out = [];
+  for (let i = -10; i <= 2; i++) out.push(monthKey(new Date(now.getFullYear(), now.getMonth() + i, 1)));
+  const jm = String(s.joinDate || "").slice(0, 7);
+  const list = out.filter((k) => !jm || k >= jm);
+  if (jm && !list.includes(jm)) list.unshift(jm);
+  return list.map((k) => `<option value="${k}" ${k === cur ? "selected" : ""}>${esc(monthLabel(k))}${k === jm ? " (joining month — all months)" : ""}</option>`).join("");
 }
 
 function viewStudent(s) {

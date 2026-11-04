@@ -91,21 +91,64 @@ function countClasses(days, from, to) {
   return n;
 }
 
+// ── Who taught the student when ──
+// Tutor stints from allocationHistory [{ tutorId, on }] (+ the current tutor), cut at the
+// student's last class date (leftOn) when the student is Inactive.
+const dayBefore = (v) => { const d = parseISO(v); d.setDate(d.getDate() - 1); return iso(d); };
+export function tutorStints(s) {
+  const inactive = (s.status || "Active") !== "Active";
+  if (inactive && !s.leftOn) return []; // stopped before last-class dates were recorded
+  const h = (s.allocationHistory || []).filter((x) => x && x.on).slice().sort((a, b) => a.on.localeCompare(b.on));
+  if (s.tutorId && (!h.length || h[h.length - 1].tutorId !== s.tutorId)) h.push({ tutorId: s.tutorId, on: s.allocatedOn || s.joinDate || "" });
+  const end = inactive ? s.leftOn : "";
+  return h.map((x, i) => ({ tutorId: x.tutorId, from: x.on, to: h[i + 1] ? dayBefore(h[i + 1].on) : end }))
+    .map((st) => (end && (!st.to || st.to > end) ? { ...st, to: end } : st))
+    .filter((st) => st.tutorId && (!st.to || !st.from || st.from <= st.to));
+}
+
 // Salary line for one student in a period. edit = { days: "Mon, Wed", hours: 1.5 } (unsaved changes)
-export function salaryLine(s, rate, type, key, edit) {
+// wins = the tutor's stints with this student ([{ from, to }], ISO dates, "" = open); default: whole time
+export function salaryLine(s, rate, type, key, edit, wins) {
   const info = classInfo(s);
   const days = edit && edit.days != null ? parseDays(edit.days) : info.days;
   const hoursPerClass = edit && edit.hours != null ? Number(edit.hours) || 0 : info.hours;
   const [ps, pe] = periodRange(type, key);
-  const starts = [ps, parseISO(s.joinDate), parseISO(s.allocatedOn)].filter(Boolean);
-  const from = new Date(Math.max(...starts.map((d) => d.getTime())));
-  const classes = days.length && from <= pe ? countClasses(days, from, pe) : 0;
+  const ranges = (wins && wins.length ? wins : [{ from: s.allocatedOn || "", to: "" }]).map((w) => {
+    const starts = [ps, parseISO(s.joinDate), parseISO(w.from)].filter(Boolean);
+    const ends = [pe, parseISO(w.to)].filter(Boolean);
+    return [new Date(Math.max(...starts.map((d) => d.getTime()))), new Date(Math.min(...ends.map((d) => d.getTime())))];
+  }).filter(([f, t]) => f <= t);
+  const classes = days.length ? ranges.reduce((a, [f, t]) => a + countClasses(days, f, t), 0) : 0;
   const hours = Math.round(classes * hoursPerClass * 100) / 100;
-  const startsLate = from > ps ? from : null;
-  return { studentId: s.id, studentName: s.name, days: daysText(days), noDays: !days.length, hoursPerClass, classes, hours, amount: Math.round(hours * (Number(rate) || 0)), startsLate };
+  const first = ranges.length ? ranges[0][0] : null, last = ranges.length ? ranges[ranges.length - 1][1] : null;
+  const startsLate = first && first > ps ? first : null;
+  const endsEarly = last && last < pe ? last : null;
+  return { studentId: s.id, studentName: s.name, days: daysText(days), noDays: !days.length, hoursPerClass, classes, hours, amount: Math.round(hours * (Number(rate) || 0)), startsLate, endsEarly };
 }
 
+// Students a tutor taught in a period → [{ s, wins }] (incl. students moved to another tutor or stopped in that period)
+export function tutorWork(ctx, tid, type, key) {
+  const [ps, pe] = periodRange(type, key);
+  const P0 = iso(ps), P1 = iso(pe);
+  const out = [];
+  ctx.students.forEach((s) => {
+    const wins = tutorStints(s).filter((w) => w.tutorId === tid && (!w.to || w.to >= P0) && (!w.from || w.from <= P1) && (!s.joinDate || s.joinDate <= P1) && (!w.to || !s.joinDate || w.to >= s.joinDate));
+    if (wins.length) out.push({ s, wins });
+  });
+  return out;
+}
+// Current active students of a tutor (counts on the Tutors page)
 export const tutorStudents = (ctx, tid) => ctx.students.filter((s) => s.tutorId === tid && (s.status || "Active") === "Active");
+// Tutors who taught anyone in a period (salary sheet)
+export function tutorIdsInPeriod(ctx, type, key) {
+  const ids = new Set();
+  const [ps, pe] = periodRange(type, key);
+  const P0 = iso(ps), P1 = iso(pe);
+  ctx.students.forEach((s) => tutorStints(s).forEach((w) => {
+    if ((!w.to || w.to >= P0) && (!w.from || w.from <= P1) && (!s.joinDate || s.joinDate <= P1)) ids.add(w.tutorId);
+  }));
+  return ids;
+}
 export const payoutFor = (ctx, tid, type, key) => (ctx.tutorPayouts || []).find((p) => p.tutorId === tid && p.periodType === type && p.periodKey === key);
 
 // Weekly payouts already made inside a month (so the monthly salary is not paid twice)
@@ -115,7 +158,7 @@ function weeklyPaidInMonth(ctx, tid, mk) {
 }
 
 export function tutorGross(ctx, t, type, key) {
-  const lines = tutorStudents(ctx, t.id).map((s) => salaryLine(s, t.fee, type, key));
+  const lines = tutorWork(ctx, t.id, type, key).map(({ s, wins }) => salaryLine(s, t.fee, type, key, null, wins));
   return { lines, gross: lines.reduce((a, l) => a + l.amount, 0), hours: lines.reduce((a, l) => a + l.hours, 0) };
 }
 
@@ -186,8 +229,9 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
   }
 
   function calc() {
-    const studs = tutorStudents(ctx, t.id);
-    const lines = studs.map((s) => salaryLine(s, rate(), S.type, S.key, S.edits[s.id]));
+    const work = tutorWork(ctx, t.id, S.type, S.key);
+    const studs = work.map((w) => w.s);
+    const lines = work.map(({ s, wins }) => salaryLine(s, rate(), S.type, S.key, S.edits[s.id], wins));
     const gross = lines.reduce((a, l) => a + l.amount, 0);
     const totHours = lines.reduce((a, l) => a + l.hours, 0);
     // hours lost per leave day: the tutor's teaching hours on an average class day
@@ -200,7 +244,7 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
     const deduction = S.deduction == null ? autoDed : S.deduction;
     const alreadyPaid = S.type === "month" ? weeklyPaidInMonth(ctx, t.id, S.key) : 0;
     const net = Math.max(0, Math.round(gross - deduction + (Number(S.adjust) || 0) - alreadyPaid));
-    return { studs, lines, gross, totHours, leaveHrs, autoLeaveHrs, deduction, autoDed, alreadyPaid, net };
+    return { studs, work, lines, gross, totHours, leaveHrs, autoLeaveHrs, deduction, autoDed, alreadyPaid, net };
   }
 
   function renderBody() {
@@ -211,7 +255,7 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
     const c = calc();
     const monthPaid = S.type === "week" ? payoutFor(ctx, t.id, "month", S.key.slice(0, 7)) : null;
     if (!c.studs.length && !p) {
-      box.innerHTML = `<div class="note">No active students are allocated to ${esc(t.name)}. Allocate students from <a href="#/allocation">Student Allocation</a> and their classes will be counted here.</div>`;
+      box.innerHTML = `<div class="note">${esc(t.name)} had no students in ${esc(periodLabel(S.type, S.key))}. Allocate students from <a href="#/allocation">Student Allocation</a> and their classes will be counted here.</div>`;
       return;
     }
     box.innerHTML = `
@@ -223,7 +267,7 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
           const s = c.studs[i];
           const e = S.edits[s.id] || {};
           return `<tr data-sid="${esc(s.id)}">
-            <td><span class="strong">${esc(s.name)}</span><span class="sub">${esc(s.studentClass || "")}${s.schedule ? " · " + esc(s.schedule) : ""}</span>${l.startsLate ? `<span class="sub">Counted from ${esc(fmtDate(iso(l.startsLate)))}</span>` : ""}</td>
+            <td><span class="strong">${esc(s.name)}</span><span class="sub">${esc(s.studentClass || "")}${s.schedule ? " · " + esc(s.schedule) : ""}</span>${l.startsLate || l.endsEarly ? `<span class="sub">Counted ${l.startsLate ? "from " + esc(fmtDate(iso(l.startsLate))) : ""}${l.startsLate && l.endsEarly ? " " : ""}${l.endsEarly ? "till " + esc(fmtDate(iso(l.endsEarly))) : ""}${s.tutorId !== t.id ? " · moved to " + esc(s.tutorName || "another tutor") : (s.status || "Active") !== "Active" ? " · stopped" : ""}</span>` : ""}</td>
             <td><input class="tp-in" data-k="days" value="${esc(e.days != null ? e.days : l.days)}" placeholder="Mon, Wed, Fri" aria-label="Class days for ${esc(s.name)}"></td>
             <td class="num"><input class="tp-in num" data-k="hours" type="number" min="0" step="0.25" value="${esc(e.hours != null ? e.hours : l.hoursPerClass)}" aria-label="Hours per class for ${esc(s.name)}"></td>
             <td class="num" data-c="classes">${l.noDays ? `<span class="pill p-due">Set days</span>` : l.classes}</td>
@@ -285,8 +329,8 @@ export function openTutorFinance(ctx, tutor, startType = "month", startKey) {
     $$(".tp-in", box).forEach((inp) => inp.addEventListener("input", () => {
       const sid = inp.closest("tr").dataset.sid;
       S.edits[sid] = { ...(S.edits[sid] || {}), [inp.dataset.k]: inp.value };
-      const s = ctx.students.find((x) => x.id === sid);
-      const l = salaryLine(s, rate(), S.type, S.key, S.edits[sid]);
+      const w = calc().work.find((x) => x.s.id === sid);
+      const l = salaryLine(w.s, rate(), S.type, S.key, S.edits[sid], w.wins);
       const tr = inp.closest("tr");
       $('[data-c="classes"]', tr).innerHTML = l.noDays ? `<span class="pill p-due">Set days</span>` : l.classes;
       $('[data-c="hours"]', tr).textContent = l.hours;
@@ -427,13 +471,13 @@ export function openSalarySheet(ctx) {
     $("#ssKey", root).innerHTML = periodChoices(S.type).map((k) => `<option value="${esc(k)}" ${k === S.key ? "selected" : ""}>${esc(periodLabel(S.type, k))}</option>`).join("");
   }
   function rows() {
-    const ids = new Set(ctx.students.filter((s) => (s.status || "Active") === "Active" && s.tutorId).map((s) => s.tutorId));
+    const ids = tutorIdsInPeriod(ctx, S.type, S.key);
     (ctx.tutorPayouts || []).filter((p) => p.periodType === S.type && p.periodKey === S.key).forEach((p) => ids.add(p.tutorId));
     return [...ids].map((id) => {
       const t = (ctx.tutors || []).find((x) => x.id === id) || { id, name: (ctx.students.find((s) => s.tutorId === id) || {}).tutorName || "Tutor", phone: "", fee: 0 };
       const p = payoutFor(ctx, id, S.type, S.key);
       const g = tutorGross(ctx, t, S.type, S.key);
-      return { t, p, students: tutorStudents(ctx, id).length, hours: p ? p.totalHours : g.hours, amount: p ? p.net : g.gross, status: p ? p.status : "Not paid" };
+      return { t, p, students: tutorWork(ctx, id, S.type, S.key).length, hours: p ? p.totalHours : g.hours, amount: p ? p.net : g.gross, status: p ? p.status : "Not paid" };
     }).sort((a, b) => String(a.t.name).localeCompare(String(b.t.name)));
   }
   function draw() {
